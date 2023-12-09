@@ -33,5 +33,3 @@ This project is a simple Blender inspired project built with Three.js and TypeSc
 ## License
 
 ## Contact
-
-Adisson Cédric (cedric.adisson@gmail.com)
