@@ -87,9 +87,9 @@ mouseManager.init(state);
 eventManager.init(state);
 
 // ANIMATION LOOP:
-const clock = new THREE.Clock();
+// const clock = new THREE.Clock();
 const animate = function () {
-  const elapsedTime = clock.getElapsedTime();
+  //   const elapsedTime = clock.getElapsedTime();
   controls.update();
   updateConfig();
   renderer.render(scene, camera);
