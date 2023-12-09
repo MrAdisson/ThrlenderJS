@@ -2,7 +2,7 @@
 
 ## About
 
-This project is a simple Blender inspired project built with Three.js and TypeScript.
+This project is a simple Blender inspired project built with Three.js and Javascript.
 
 ## Getting Started
 
