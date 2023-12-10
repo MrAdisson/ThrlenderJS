@@ -70,7 +70,6 @@ const skyLight = new THREE.HemisphereLight(
   CONFIG.LIGHTS_SKY_LIGHT_GROUND,
   CONFIG.LIGHTS_SKY_LIGHT_INTENSITY
 );
-skyLight.castShadow = true;
 skyLight.position.set(0, 20, 0);
 scene.add(skyLight);
 state.skyLight = skyLight;
