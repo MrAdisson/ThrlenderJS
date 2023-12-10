@@ -3,6 +3,8 @@ import { CONFIG } from '../utils/config';
 const initMenu = (state) => {
   const scene = state.scene;
   const menu = document.createElement('div');
+  // ID MENU
+  menu.id = 'menu';
   menu.style.position = 'absolute';
   menu.style.top = '0';
   menu.style.left = '0';
@@ -13,11 +15,25 @@ const initMenu = (state) => {
   menu.style.justifyContent = 'center';
   menu.style.padding = '10px';
   menu.style.border = '1px solid black';
-  menu.style.borderRadius = '5px';
   menu.style.backgroundColor = '#1f1f1f';
 
   document.body.appendChild(menu);
 
+  // HIDE MENU
+  const hideMenuBtn = document.createElement('button');
+  hideMenuBtn.innerHTML = 'HIDE MENU';
+  hideMenuBtn.style.zIndex = '999';
+  hideMenuBtn.style.padding = '10px';
+  hideMenuBtn.style.border = '1px solid black';
+  hideMenuBtn.style.borderRadius = '5px';
+  hideMenuBtn.style.backgroundColor = '#1f1f1f';
+  hideMenuBtn.style.color = 'white';
+  hideMenuBtn.style.cursor = 'pointer';
+  hideMenuBtn.addEventListener('click', () => {
+    hideMenu();
+  });
+
+  menu.appendChild(hideMenuBtn);
   const menuSelect = document.createElement('select');
   menuSelect.style.marginTop = '10px';
   menu.appendChild(menuSelect);
@@ -85,8 +101,36 @@ const initMenu = (state) => {
       state.lights.push(light);
       state.helpers.push(lightHelper);
     }
-    console.log(state);
   });
+  // ADD BTN TO HIDE MENU BELOW THE MENU
+};
+
+const hideMenu = () => {
+  const menu = document.getElementById('menu');
+  menu.style.display = 'none';
+  // SHOW BTN TO DISPLAY MENU BACK
+  const showMenuBtn = document.createElement('button');
+  showMenuBtn.innerHTML = 'SHOW MENU';
+  showMenuBtn.style.position = 'absolute';
+  showMenuBtn.style.top = '0';
+  showMenuBtn.style.left = '0';
+  showMenuBtn.style.zIndex = '999';
+  showMenuBtn.style.padding = '10px';
+  showMenuBtn.style.border = '1px solid black';
+  showMenuBtn.style.borderRadius = '5px';
+  showMenuBtn.style.backgroundColor = '#1f1f1f';
+  showMenuBtn.style.color = 'white';
+  showMenuBtn.style.cursor = 'pointer';
+  showMenuBtn.addEventListener('click', () => {
+    showMenu();
+    showMenuBtn.remove();
+  });
+  document.body.appendChild(showMenuBtn);
+};
+
+const showMenu = () => {
+  const menu = document.getElementById('menu');
+  menu.style.display = 'flex';
 };
 
 export const MENU = {
