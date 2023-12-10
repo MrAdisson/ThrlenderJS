@@ -46,7 +46,7 @@ const addSelectedObject = (selectedObject) => {
   //   CHECK OBJECT TYPE:
   if (selectedObject instanceof THREE.Light) {
     selectedObjectFolder.add(selectedObject, 'intensity', 0, 500).name('intensity').listen();
-    selectedObjectFolder.add(selectedObject, 'distance').name('distance').listen();
+    selectedObjectFolder.add(selectedObject, 'distance', 1, 150).name('distance').listen();
     selectedObjectFolder.add(selectedObject, 'decay').name('decay').listen();
     selectedObjectFolder.addColor(selectedObject, 'color').name('color').listen();
     return;

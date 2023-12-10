@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../utils/config';
+// import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 const initMenu = (state) => {
   const scene = state.scene;
   const menu = document.createElement('div');
@@ -50,6 +52,28 @@ const initMenu = (state) => {
   menuButton.style.marginTop = '10px';
   menu.appendChild(menuButton);
 
+  // GTLF LOADER
+  // const gltfLoader = new GLTFLoader();
+  // const gltfBtn = document.createElement('button');
+  // gltfBtn.innerHTML = 'ADD GLTF';
+  // gltfBtn.style.padding = '10px';
+  // gltfBtn.style.border = '1px solid black';
+  // gltfBtn.style.borderRadius = '5px';
+  // gltfBtn.style.backgroundColor = '#1f1f1f';
+  // gltfBtn.style.color = 'white';
+  // gltfBtn.style.cursor = 'pointer';
+  // gltfBtn.addEventListener('click', () => {
+  //   gltfLoader.load(
+  //     'https://threejsfundamentals.org/threejs/resources/models/cartoon_lowpoly_small_city_free_pack/scene.gltf',
+  //     (gltf) => {
+  //       const root = gltf.scene;
+  //       scene.add(root);
+  //       state.sceneObjects.push(root);
+  //     }
+  //   );
+  // });
+  // menu.appendChild(gltfBtn);
+
   const objects = [
     { value: 'cube', createGeometry: () => new THREE.BoxGeometry(1, 1, 1), type: 'object' },
     { value: 'sphere', createGeometry: () => new THREE.SphereGeometry(1, 32, 32), type: 'object' },
@@ -87,7 +111,8 @@ const initMenu = (state) => {
         wireframe: CONFIG.WIREFRAME_MODE,
       });
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, Math.random() * 10 - 5);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       scene.add(mesh);
       state.sceneObjects.push(mesh);
     }
@@ -96,7 +121,8 @@ const initMenu = (state) => {
       // ADD HELPER:
       const lightHelper = new THREE.PointLightHelper(light);
       scene.add(lightHelper);
-      light.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, Math.random() * 10 - 5);
+      light.position.set(0, 3, 0);
+      light.castShadow = true;
       scene.add(light);
       state.lights.push(light);
       state.helpers.push(lightHelper);

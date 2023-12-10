@@ -37,8 +37,14 @@ state.camera = camera;
 // RENDERER:
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
+
+// SET SHADOWS:
+
+renderer.shadowMap.enabled = true;
+// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
 state.renderer = renderer;
 
 // ORBIT CONTROLS:
@@ -48,9 +54,10 @@ controls.dampingFactor = 0.05;
 state.controls = controls;
 
 // POINT LIGHT:
-const light = new THREE.PointLight('orange', 100, 100);
-light.position.set(0, 0, 0);
+const light = new THREE.PointLight('orange', 30, 30);
+light.position.set(0, 3, 0);
 scene.add(light);
+light.castShadow = true;
 // LIGHT HELPER:
 const lightHelper = new THREE.PointLightHelper(light);
 scene.add(lightHelper);
@@ -63,6 +70,7 @@ const skyLight = new THREE.HemisphereLight(
   CONFIG.LIGHTS_SKY_LIGHT_GROUND,
   CONFIG.LIGHTS_SKY_LIGHT_INTENSITY
 );
+skyLight.castShadow = true;
 skyLight.position.set(0, 20, 0);
 scene.add(skyLight);
 state.skyLight = skyLight;
@@ -81,14 +89,30 @@ state.axesHelper = axesHelper;
 for (let i = 0; i < 5; i++) {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
   const material = new THREE.MeshLambertMaterial({
-    color: 0xffffff,
+    color: 0x333333,
     wireframe: CONFIG.WIREFRAME_MODE,
   });
   const cube = new THREE.Mesh(geometry, material);
-  cube.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, Math.random() * 10 - 5);
+  cube.position.set(
+    Math.floor(Math.random() * 10 - 5),
+    Math.floor(Math.random() * 3),
+    Math.floor(Math.random() * 10 - 5)
+  );
+  cube.castShadow = true;
+  cube.receiveShadow = true;
   scene.add(cube);
   state.sceneObjects.push(cube);
 }
+
+// ADD GROUND :
+const groundGeometry = new THREE.PlaneGeometry(10, 10);
+const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+ground.position.y = -0.5;
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+state.sceneObjects.push(ground);
 
 // ADD TRANSFORM CONTROLS
 const transformControls = new TransformControls(camera, renderer.domElement);
