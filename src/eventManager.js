@@ -1,4 +1,5 @@
 import { CONFIG } from './utils/config';
+import * as THREE from 'three';
 
 const init = (state) => {
   // RESIZE HANDLER:
@@ -44,6 +45,15 @@ const init = (state) => {
     if (event.key === 'w') {
       event.preventDefault();
       CONFIG.WIREFRAME_MODE = !CONFIG.WIREFRAME_MODE;
+    }
+    if (event.key === 'f') {
+      if (state.selectedObject) {
+        state.controls.target = new THREE.Vector3(
+          state.selectedObject.position.x,
+          state.selectedObject.position.y,
+          state.selectedObject.position.z
+        );
+      }
     }
   });
 };
