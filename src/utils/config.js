@@ -1,7 +1,7 @@
 import { logger } from './logger';
 
 export const CONFIG = {
-  WIREFRAME_MODE: true,
+  WIREFRAME_MODE: false,
   GRID_VISIBLE: true,
   GRID_COLOR: 'rgb(099, 099, 099)',
   AXES_HELPER: true,
@@ -9,6 +9,10 @@ export const CONFIG = {
   TRANSFORM_CONTROLS_ENABLED: true,
   TRANSFORM_CONTROLS_MODE: 'translate',
   SNAP_TO_GRID: true,
+  LIGHTS_LIGHT_HELPERS_VISIBLE: true,
+  LIGHTS_SKY_LIGHT_INTENSITY: 0.5,
+  LIGHTS_SKY_LIGHT_COLOR: 'rgb(255, 255, 255)',
+  LIGHTS_SKY_LIGHT_GROUND: '#333333',
 };
 
 export const initConfig = (state) => {
@@ -75,5 +79,30 @@ export const CONFIG_CALLBACKS = {
           state.transformControls.showY = false;
           state.transformControls.showZ = false;
         })();
+  },
+  LIGHTS_LIGHT_HELPERS_VISIBLE: (state) => {
+    CONFIG.LIGHTS_LIGHT_HELPERS_VISIBLE
+      ? (() => {
+          state.helpers.forEach((helper) => {
+            helper.visible = true;
+          });
+        })()
+      : (() => {
+          state.helpers.forEach((helper) => {
+            helper.visible = false;
+          });
+        })();
+  },
+  LIGHTS_SKY_LIGHT_INTENSITY: (state) => {
+    logger.log('LIGHTS_SKY_LIGHT_INTENSITY : ' + CONFIG.LIGHTS_SKY_LIGHT_INTENSITY, 'SETTINGS', 'grey');
+    state.skyLight.intensity = CONFIG.LIGHTS_SKY_LIGHT_INTENSITY;
+  },
+  LIGHTS_SKY_LIGHT_COLOR: (state) => {
+    logger.log('LIGHTS_SKY_LIGHT_COLOR : ' + CONFIG.LIGHTS_SKY_LIGHT_COLOR, 'SETTINGS', 'grey');
+    state.skyLight.color.set(CONFIG.LIGHTS_SKY_LIGHT_COLOR);
+  },
+  LIGHTS_SKY_LIGHT_GROUND: (state) => {
+    logger.log('LIGHTS_SKY_LIGHT_GROUND : ' + CONFIG.LIGHTS_SKY_LIGHT_GROUND, 'SETTINGS', 'grey');
+    state.skyLight.groundColor.set(CONFIG.LIGHTS_SKY_LIGHT_GROUND);
   },
 };
