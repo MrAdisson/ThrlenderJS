@@ -54,7 +54,7 @@ controls.dampingFactor = 0.05;
 state.controls = controls;
 
 // POINT LIGHT:
-const light = new THREE.PointLight('orange', 30, 30);
+const light = new THREE.PointLight('orange', 45, 45);
 light.position.set(0, 3, 0);
 scene.add(light);
 light.castShadow = true;
@@ -89,7 +89,7 @@ state.axesHelper = axesHelper;
 for (let i = 0; i < 5; i++) {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
   const material = new THREE.MeshLambertMaterial({
-    color: 0x333333,
+    color: 0xffffff,
     wireframe: CONFIG.WIREFRAME_MODE,
   });
   const cube = new THREE.Mesh(geometry, material);

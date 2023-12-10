@@ -82,10 +82,10 @@ const initMenu = (state) => {
   ];
 
   const lights = [
-    { value: 'pointLight', createLight: () => new THREE.PointLight(colorOption.value, 100, 100), type: 'light' },
-    { value: 'spotLight', createLight: () => new THREE.SpotLight(colorOption.value, 100, 100), type: 'light' },
-    { value: 'directionalLight', createLight: () => new THREE.DirectionalLight(colorOption.value, 100), type: 'light' },
-    { value: 'ambientLight', createLight: () => new THREE.AmbientLight(colorOption.value, 100), type: 'light' },
+    { value: 'pointLight', createLight: () => new THREE.PointLight(colorOption.value, 45, 100), type: 'light' },
+    { value: 'spotLight', createLight: () => new THREE.SpotLight(colorOption.value, 45, 100), type: 'light' },
+    { value: 'directionalLight', createLight: () => new THREE.DirectionalLight(colorOption.value, 45), type: 'light' },
+    { value: 'ambientLight', createLight: () => new THREE.AmbientLight(colorOption.value, 45), type: 'light' },
   ];
 
   objects.forEach((obj) => {
