@@ -2,6 +2,18 @@ import * as THREE from 'three';
 import { DEBUG } from './debug/debug';
 import { ThrlenderEngine } from './ThrlenderEngine';
 
+const selectionnableObjectsTypes = [
+  'cube',
+  'sphere',
+  'cylinder',
+  'cone',
+  'plane',
+  'pointLightHelper',
+  'spotLightHelper',
+  'directionalLightHelper',
+  'ambientLightHelper',
+];
+
 const init = () => {
   const thrlender = ThrlenderEngine.getInstance();
   const raycaster = new THREE.Raycaster();
@@ -15,7 +27,11 @@ const init = () => {
     if (event.target.localName !== 'canvas') return;
     if (thrlender.transformControls.dragging) return;
     raycaster.setFromCamera(mouse, thrlender.camera);
-    const intersects = raycaster.intersectObjects(thrlender.scene.children).filter((obj) => obj.object.isSelectable);
+    console.log(raycaster.intersectObjects(thrlender.scene.children));
+    const intersects = raycaster
+      .intersectObjects(thrlender.scene.children)
+      .filter((obj) => selectionnableObjectsTypes.includes(obj.object?.name));
+    console.log(intersects);
     if (!intersects.length > 0) {
       thrlender.transformControls.detach();
       DEBUG.removeSelectedObject();
@@ -28,6 +44,7 @@ const init = () => {
 
     // IF IS LIGHTHELPER, SELECT LIGHT
     if (intersects[0].object?.light) {
+      console.log('LIGHT ATTACHED ! ');
       thrlender.selectedObject = intersects[0].object.light;
       thrlender.transformControls.attach(thrlender.selectedObject);
       DEBUG.addSelectedObject(thrlender.selectedObject);

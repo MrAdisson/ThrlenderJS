@@ -61,10 +61,29 @@ const initMenu = () => {
   ];
 
   const lights = [
-    { value: 'pointLight', createLight: () => new THREE.PointLight(colorOption.value, 45, 100), type: 'light' },
-    { value: 'spotLight', createLight: () => new THREE.SpotLight(colorOption.value, 45, 100), type: 'light' },
-    { value: 'directionalLight', createLight: () => new THREE.DirectionalLight(colorOption.value, 45), type: 'light' },
-    { value: 'ambientLight', createLight: () => new THREE.AmbientLight(colorOption.value, 45), type: 'light' },
+    {
+      value: 'pointLight',
+      createLight: () => new THREE.PointLight(colorOption.value, 45, 100),
+      type: 'light',
+      createLightHelper: (light) => new THREE.PointLightHelper(light),
+    },
+    {
+      value: 'spotLight',
+      createLight: () => new THREE.SpotLight(colorOption.value, 45, 100),
+      type: 'light',
+      createLightHelper: (light) => new THREE.SpotLightHelper(light),
+    },
+    {
+      value: 'directionalLight',
+      createLight: () => new THREE.DirectionalLight(colorOption.value, 45),
+      type: 'light',
+      createLightHelper: (light) => new THREE.DirectionalLightHelper(light),
+    },
+    {
+      value: 'ambientLight',
+      createLight: () => new THREE.AmbientLight(colorOption.value, 45),
+      type: 'light',
+    },
   ];
 
   objects.forEach((obj) => {
@@ -90,6 +109,7 @@ const initMenu = () => {
         wireframe: CONFIG.WIREFRAME_MODE,
       });
       const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = selectedObject.value;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.isSelectable = true; // CUSTOM PROPERTY
@@ -97,13 +117,18 @@ const initMenu = () => {
     }
     if (selectedObject?.type === 'light') {
       const light = selectedObject.createLight();
-      const lightHelper = new THREE.PointLightHelper(light);
-      lightHelper.isSelectable = true; // CUSTOM PROPERTY
-      lightHelper.isLightHelper = true; // CUSTOM PROPERTY
-      thrlender.scene.add(lightHelper);
       light.position.set(0, 3, 0);
+      light.name = selectedObject.value;
       light.castShadow = true;
       thrlender.scene.add(light);
+      if (selectedObject.createLightHelper !== undefined) {
+        console.log('COUCOU');
+        const lightHelper = selectedObject.createLightHelper(light);
+        lightHelper.isSelectable = true; // CUSTOM PROPERTY
+        lightHelper.isLightHelper = true; // CUSTOM PROPERTY
+        lightHelper.name = `${selectedObject.value}Helper`;
+        thrlender.scene.add(lightHelper);
+      }
     }
   });
 };

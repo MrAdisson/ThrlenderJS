@@ -116,4 +116,53 @@ export class ThrlenderEngine {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
+  save() {
+    // SAVE JSON SCENE:
+
+    // CLEAN SCENE FROM AXES HELPER, GRID HELPER, TRANSFORM CONTROLS:
+    this.scene.remove(this.axesHelper);
+    this.scene.remove(this.gridHelper);
+    this.scene.remove(this.transformControls);
+
+    const jsonScene = JSON.stringify(this.scene.toJSON());
+    console.log(jsonScene);
+
+    // RE-ADD AXES HELPER, GRID HELPER, TRANSFORM CONTROLS:
+    this.scene.add(this.axesHelper);
+    this.scene.add(this.gridHelper);
+    this.scene.add(this.transformControls);
+
+    const blob = new Blob([jsonScene], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'scene.thrl';
+    link.click();
+    link.remove();
+  }
+  load() {
+    // CLEAR CURRENT SCENE:
+    // LOAD JSON SCENE:
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.thrl';
+    input.onchange = (event) => {
+      const reader = new FileReader();
+      reader.readAsText(event.target.files[0]);
+      reader.onload = (event) => {
+        const jsonScene = JSON.parse(event.target.result);
+        const loader = new THREE.ObjectLoader();
+        this.transformControls.detach();
+        this.scene.children.forEach((child) => {
+          if (child.name !== '') {
+            this.scene.remove(child);
+          }
+        });
+        this.scene = loader.parse(jsonScene);
+        this.init();
+      };
+    };
+    input.click();
+    input.remove();
+  }
 }

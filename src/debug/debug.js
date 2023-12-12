@@ -7,14 +7,14 @@ import { ThrlenderEngine } from '../ThrlenderEngine';
 const gui = new GUI();
 
 const init = () => {
-  // const thrlender = ThrlenderEngine.getInstance();
+  const thrlender = ThrlenderEngine.getInstance();
   //GLOBAL SETTINGS
   gui.add(CONFIG, 'WIREFRAME_MODE').listen();
   gui.add(CONFIG, 'ENABLE_DAMPING').listen();
 
   const saveAndLoadFolder = gui.addFolder('Save and Load');
-  // saveAndLoadFolder.add(thrlender, 'save').listen();
-  // saveAndLoadFolder.add(thrlender, 'load').listen();
+  saveAndLoadFolder.add(thrlender, 'save').listen();
+  saveAndLoadFolder.add(thrlender, 'load').listen();
 
   //GRID SETTINGS
   const gridFolder = gui.addFolder('Grid Settings');
