@@ -75,6 +75,10 @@ export class ThrlenderEngine {
     );
     this.skyLight.position.set(0, 20, 0);
     this.skyLight.name = 'ThrlenderSkyLight';
+    // ADD HELPER TO LIGHTS:
+    const lightHelper = new THREE.PointLightHelper(this.skyLight, 1);
+    lightHelper.name = 'ThrlenderSkyLightHelper';
+    this.scene.add(lightHelper);
     this.scene.add(this.skyLight);
   }
   initGrid() {
@@ -159,6 +163,14 @@ export class ThrlenderEngine {
           }
         });
         this.scene = loader.parse(jsonScene);
+        // ADD HELPER TO LIGHTS:
+        this.scene.children.forEach((child) => {
+          if (child.type?.includes('Light')) {
+            const lightHelper = new THREE.PointLightHelper(child, 1);
+            lightHelper.name = `${child.name}Helper`;
+            this.scene.add(lightHelper);
+          }
+        });
         this.init();
       };
     };

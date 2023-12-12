@@ -12,6 +12,7 @@ const selectionnableObjectsTypes = [
   'spotLightHelper',
   'directionalLightHelper',
   'ambientLightHelper',
+  'ThrlenderSkyLightHelper',
 ];
 
 const init = () => {
