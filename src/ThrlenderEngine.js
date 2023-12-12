@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { CONFIG } from './utils/config';
 import { DEBUG } from './debug/debug';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 
 export class ThrlenderEngine {
   constructor() {
@@ -188,5 +189,25 @@ export class ThrlenderEngine {
     this.selectedObject.geometry.dispose();
     DEBUG.removeSelectedObject();
     this.selectedObject = null;
+  }
+
+  loadFbx() {
+    // LOAD FBX SCENE:
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.fbx';
+    input.onchange = (event) => {
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(event.target.files[0]);
+      reader.onload = (event) => {
+        console.log(event);
+        const contents = event.target.result;
+        const loader = new FBXLoader();
+        const object = loader.parse(contents);
+        this.scene.add(object);
+      };
+    };
+    input.click();
+    input.remove();
   }
 }

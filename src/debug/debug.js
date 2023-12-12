@@ -15,6 +15,7 @@ const init = () => {
   const saveAndLoadFolder = gui.addFolder('Save and Load');
   saveAndLoadFolder.add(thrlender, 'save').listen();
   saveAndLoadFolder.add(thrlender, 'load').listen();
+  saveAndLoadFolder.add(thrlender, 'loadFbx').listen();
 
   //GRID SETTINGS
   const gridFolder = gui.addFolder('Grid Settings');
