@@ -122,7 +122,6 @@ const initMenu = () => {
       light.castShadow = true;
       thrlender.scene.add(light);
       if (selectedObject.createLightHelper !== undefined) {
-        console.log('COUCOU');
         const lightHelper = selectedObject.createLightHelper(light);
         lightHelper.isSelectable = true; // CUSTOM PROPERTY
         lightHelper.isLightHelper = true; // CUSTOM PROPERTY

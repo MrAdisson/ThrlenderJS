@@ -129,7 +129,6 @@ export class ThrlenderEngine {
     this.scene.remove(this.transformControls);
 
     const jsonScene = JSON.stringify(this.scene.toJSON());
-    console.log(jsonScene);
 
     // RE-ADD AXES HELPER, GRID HELPER, TRANSFORM CONTROLS:
     this.scene.add(this.axesHelper);

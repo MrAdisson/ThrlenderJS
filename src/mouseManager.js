@@ -28,11 +28,9 @@ const init = () => {
     if (event.target.localName !== 'canvas') return;
     if (thrlender.transformControls.dragging) return;
     raycaster.setFromCamera(mouse, thrlender.camera);
-    console.log(raycaster.intersectObjects(thrlender.scene.children));
     const intersects = raycaster
       .intersectObjects(thrlender.scene.children)
       .filter((obj) => selectionnableObjectsTypes.includes(obj.object?.name));
-    console.log(intersects);
     if (!intersects.length > 0) {
       thrlender.transformControls.detach();
       DEBUG.removeSelectedObject();
@@ -45,7 +43,6 @@ const init = () => {
 
     // IF IS LIGHTHELPER, SELECT LIGHT
     if (intersects[0].object?.light) {
-      console.log('LIGHT ATTACHED ! ');
       thrlender.selectedObject = intersects[0].object.light;
       thrlender.transformControls.attach(thrlender.selectedObject);
       DEBUG.addSelectedObject(thrlender.selectedObject);
