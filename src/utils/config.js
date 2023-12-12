@@ -77,15 +77,15 @@ export const getConfigCallbacks = () => {
     },
     LIGHTS_LIGHT_HELPERS_VISIBLE: () => {
       // GET ALL LIGHT HELPERS IN SCENE.CHILDREN
-      thrlender.helpers = thrlender.scene.children.filter((obj) => obj.isLightHelper);
+      const helpers = thrlender.scene.children.filter((obj) => obj.type.includes('LightHelper'));
       CONFIG.LIGHTS_LIGHT_HELPERS_VISIBLE
         ? (() => {
-            thrlender.helpers.forEach((helper) => {
+            helpers.forEach((helper) => {
               helper.visible = true;
             });
           })()
         : (() => {
-            thrlender.helpers.forEach((helper) => {
+            helpers.forEach((helper) => {
               helper.visible = false;
             });
           })();
