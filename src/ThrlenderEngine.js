@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { CONFIG } from './utils/config';
+import { DEBUG } from './debug/debug';
 
 export class ThrlenderEngine {
   constructor() {
@@ -31,16 +32,13 @@ export class ThrlenderEngine {
       this.initTransformControls();
       //  INIT AXES HELPER
       this.initAxesHelper();
+      this.selectedObject = null;
       // ADD SCENE TO DOM
     } else {
-      // REMAP ALL OTHER PARAMETERS FROM SCENE :
-      // this.initRenderer();
-      // this.initControls();
       this.initGrid();
       this.initAxesHelper();
       this.initTransformControls();
       this.skyLight = this.scene.getObjectByName('ThrlenderSkyLight');
-      // this.initAxesHelper();
     }
     document.body.appendChild(this.renderer.domElement);
   }
@@ -120,9 +118,10 @@ export class ThrlenderEngine {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
-  save() {
-    // SAVE JSON SCENE:
 
+  // SAVE AND LOAD METHODS:
+
+  save() {
     // CLEAN SCENE FROM AXES HELPER, GRID HELPER, TRANSFORM CONTROLS:
     this.scene.remove(this.axesHelper);
     this.scene.remove(this.gridHelper);
@@ -135,6 +134,7 @@ export class ThrlenderEngine {
     this.scene.add(this.gridHelper);
     this.scene.add(this.transformControls);
 
+    // DOWNLOAD JSON SCENE:
     const blob = new Blob([jsonScene], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -143,6 +143,7 @@ export class ThrlenderEngine {
     link.click();
     link.remove();
   }
+
   load() {
     // CLEAR CURRENT SCENE:
     // LOAD JSON SCENE:
@@ -175,5 +176,17 @@ export class ThrlenderEngine {
     };
     input.click();
     input.remove();
+  }
+
+  setSelectedObject(object) {
+    this.selectedObject = object;
+  }
+  removeSelectedObject() {
+    this.transformControls.detach();
+    this.scene.remove(this.selectedObject);
+    this.selectedObject.material.dispose();
+    this.selectedObject.geometry.dispose();
+    DEBUG.removeSelectedObject();
+    this.selectedObject = null;
   }
 }

@@ -33,22 +33,24 @@ const init = () => {
       .filter((obj) => selectionnableObjectsTypes.includes(obj.object?.name));
     if (!intersects.length > 0) {
       thrlender.transformControls.detach();
+      thrlender.setSelectedObject(null);
       DEBUG.removeSelectedObject();
       return;
     }
     if (thrlender.selectedObject) {
       thrlender.transformControls.detach();
+      thrlender.setSelectedObject(null);
       DEBUG.removeSelectedObject();
     }
 
     // IF IS LIGHTHELPER, SELECT LIGHT
     if (intersects[0].object?.light) {
-      thrlender.selectedObject = intersects[0].object.light;
+      thrlender.setSelectedObject(intersects[0].object.light);
       thrlender.transformControls.attach(thrlender.selectedObject);
       DEBUG.addSelectedObject(thrlender.selectedObject);
       return;
     }
-    thrlender.selectedObject = intersects[0].object;
+    thrlender.setSelectedObject(intersects[0].object);
     thrlender.transformControls.attach(thrlender.selectedObject);
     DEBUG.addSelectedObject(thrlender.selectedObject);
   };

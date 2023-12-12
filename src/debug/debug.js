@@ -44,6 +44,7 @@ const init = () => {
 };
 
 const addSelectedObject = (selectedObject) => {
+  const thrlender = ThrlenderEngine.getInstance();
   logger.log(selectedObject, 'debug', 'blue', 'New selected object :');
   const selectedObjectFolder = gui.addFolder('Selected Object');
   const objPosition = selectedObjectFolder.addFolder('position');
@@ -57,6 +58,7 @@ const addSelectedObject = (selectedObject) => {
     selectedObjectFolder.add(selectedObject, 'distance', 1, 150).name('distance').listen();
     selectedObjectFolder.add(selectedObject, 'decay').name('decay').listen();
     selectedObjectFolder.addColor(selectedObject, 'color').name('color').listen();
+    selectedObjectFolder.add(thrlender, 'removeSelectedObject')?.listen();
     return;
   }
 
@@ -64,8 +66,7 @@ const addSelectedObject = (selectedObject) => {
   selectedObjectFolder.add(selectedObject.scale, 'y').name('sy').listen();
   selectedObjectFolder.add(selectedObject.scale, 'z').name('sz').listen();
   selectedObjectFolder.addColor(selectedObject.material, 'color').name('color').listen();
-  selectedObject.removeFromScene &&
-    selectedObjectFolder.add(selectedObject, 'removeFromScene')?.name('remove')?.listen();
+  selectedObjectFolder.add(thrlender, 'removeSelectedObject')?.listen();
   // ADD FUNCTION TO REMOVE OBJECT SELECTED OBJECT
 };
 
