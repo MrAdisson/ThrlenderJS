@@ -1,17 +1,20 @@
+import { ThrlenderEngine } from './ThrlenderEngine';
 import { CONFIG } from './utils/config';
 import * as THREE from 'three';
 
-const init = (state) => {
-  // RESIZE HANDLER:
+const init = () => {
+  const thrlender = ThrlenderEngine.getInstance();
   const resizeHandler = function () {
-    state.camera.aspect = window.innerWidth / window.innerHeight;
-    state.camera.updateProjectionMatrix();
-    state.renderer.setSize(window.innerWidth, window.innerHeight);
+    thrlender.resize();
   };
   window.addEventListener('resize', resizeHandler);
 
   //   KEYBOARD HANDLER:
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'd') {
+      const thrlender = ThrlenderEngine.getInstance();
+      console.log(thrlender);
+    }
     if (event.code === 'Space') {
       event.preventDefault();
       CONFIG.TRANSFORM_CONTROLS_ENABLED = !CONFIG.TRANSFORM_CONTROLS_ENABLED;
@@ -47,11 +50,11 @@ const init = (state) => {
       CONFIG.WIREFRAME_MODE = !CONFIG.WIREFRAME_MODE;
     }
     if (event.key === 'f') {
-      if (state.selectedObject) {
-        state.controls.target = new THREE.Vector3(
-          state.selectedObject.position.x,
-          state.selectedObject.position.y,
-          state.selectedObject.position.z
+      if (thrlender.selectedObject) {
+        thrlender.controls.target = new THREE.Vector3(
+          thrlender.selectedObject.position.x,
+          thrlender.selectedObject.position.y,
+          thrlender.selectedObject.position.z
         );
       }
     }

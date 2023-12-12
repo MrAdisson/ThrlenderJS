@@ -1,3 +1,4 @@
+import { ThrlenderEngine } from '../ThrlenderEngine';
 import { logger } from './logger';
 
 export const CONFIG = {
@@ -15,94 +16,91 @@ export const CONFIG = {
   LIGHTS_SKY_LIGHT_GROUND: '#333333',
 };
 
-export const initConfig = (state) => {
-  CONFIG.SNAP_TO_GRID &&
-    (() => {
-      state.transformControls.setTranslationSnap(1);
-      state.transformControls.setRotationSnap((15 * Math.PI) / 180);
-      state.transformControls.setScaleSnap(0.25);
-    })();
-};
-
-export const CONFIG_CALLBACKS = {
-  WIREFRAME_MODE: (state) => {
-    logger.log('WIREFRAME_MODE : ' + CONFIG.WIREFRAME_MODE, 'SETTINGS', 'grey');
-    state.sceneObjects.forEach((obj) => {
-      obj.material.wireframe = CONFIG.WIREFRAME_MODE;
-    });
-  },
-  GRID_VISIBLE: (state) => {
-    logger.log('GRID_VISIBLE : ' + CONFIG.GRID_VISIBLE, 'SETTINGS', 'grey');
-    state.grid.visible = CONFIG.GRID_VISIBLE;
-  },
-  GRID_COLOR: (state) => {
-    logger.log('GRID_COLOR : ' + CONFIG.GRID_COLOR, 'SETTINGS', 'grey');
-    state.grid.material.color.set(CONFIG.GRID_COLOR);
-  },
-  AXES_HELPER: (state) => {
-    logger.log('AXES_HELPER : ' + CONFIG.AXES_HELPER, 'SETTINGS', 'grey');
-    state.axesHelper.visible = CONFIG.AXES_HELPER;
-  },
-  ENABLE_DAMPING: (state) => {
-    logger.log('ENABLE_DAMPING : ' + CONFIG.ENABLE_DAMPING, 'SETTINGS', 'grey');
-    state.controls.enableDamping = CONFIG.ENABLE_DAMPING;
-  },
-  TRANSFORM_CONTROLS_MODE: (state) => {
-    logger.log('TRANSFORM_CONTROLS_MODE : ' + CONFIG.TRANSFORM_CONTROLS_MODE, 'SETTINGS', 'grey');
-    state.transformControls.setMode(CONFIG.TRANSFORM_CONTROLS_MODE);
-  },
-  SNAP_TO_GRID: (state) => {
-    logger.log('SNAP_TO_GRID : ' + CONFIG.SNAP_TO_GRID, 'SETTINGS', 'grey');
-    CONFIG.SNAP_TO_GRID
-      ? (() => {
-          state.transformControls.setTranslationSnap(1);
-          state.transformControls.setRotationSnap((15 * Math.PI) / 180);
-          state.transformControls.setScaleSnap(0.25);
-        })()
-      : (() => {
-          state.transformControls.setTranslationSnap(null);
-          state.transformControls.setRotationSnap(null);
-          state.transformControls.setScaleSnap(null);
-        })();
-  },
-  TRANSFORM_CONTROLS_ENABLED: (state) => {
-    CONFIG.TRANSFORM_CONTROLS_ENABLED
-      ? (() => {
-          state.transformControls.enabled = true;
-          state.transformControls.showX = true;
-          state.transformControls.showY = true;
-          state.transformControls.showZ = true;
-        })()
-      : (() => {
-          state.transformControls.enabled = false;
-          state.transformControls.showX = false;
-          state.transformControls.showY = false;
-          state.transformControls.showZ = false;
-        })();
-  },
-  LIGHTS_LIGHT_HELPERS_VISIBLE: (state) => {
-    CONFIG.LIGHTS_LIGHT_HELPERS_VISIBLE
-      ? (() => {
-          state.helpers.forEach((helper) => {
-            helper.visible = true;
-          });
-        })()
-      : (() => {
-          state.helpers.forEach((helper) => {
-            helper.visible = false;
-          });
-        })();
-  },
-  LIGHTS_SKY_LIGHT_INTENSITY: (state) => {
-    logger.log('LIGHTS_SKY_LIGHT_INTENSITY : ' + CONFIG.LIGHTS_SKY_LIGHT_INTENSITY, 'SETTINGS', 'grey');
-    state.skyLight.intensity = CONFIG.LIGHTS_SKY_LIGHT_INTENSITY;
-  },
-  LIGHTS_SKY_LIGHT_COLOR: (state) => {
-    logger.log('LIGHTS_SKY_LIGHT_COLOR : ' + CONFIG.LIGHTS_SKY_LIGHT_COLOR, 'SETTINGS', 'grey');
-    state.skyLight.color.set(CONFIG.LIGHTS_SKY_LIGHT_COLOR);
-  },
-  LIGHTS_SKY_LIGHT_GROUND: (state) => {
-    logger.log('LIGHTS_SKY_LIGHT_GROUND : ' + CONFIG.LIGHTS_SKY_LIGHT_GROUND, 'SETTINGS', 'grey');
-    state.skyLight.groundColor.set(CONFIG.LIGHTS_SKY_LIGHT_GROUND);
-  },
+export const getConfigCallbacks = () => {
+  const thrlender = ThrlenderEngine.getInstance();
+  return {
+    WIREFRAME_MODE: () => {
+      thrlender?.scene?.children?.forEach((obj) => {
+        if (!obj.isSelectable) return;
+        obj.material.wireframe = CONFIG.WIREFRAME_MODE;
+      });
+      logger.log('WIREFRAME_MODE : ' + CONFIG.WIREFRAME_MODE, 'SETTINGS', 'grey');
+    },
+    GRID_VISIBLE: () => {
+      thrlender.gridHelper.visible = CONFIG.GRID_VISIBLE;
+      logger.log('GRID_VISIBLE : ' + CONFIG.GRID_VISIBLE, 'SETTINGS', 'grey');
+    },
+    GRID_COLOR: () => {
+      thrlender.gridHelper.material.color.set(CONFIG.GRID_COLOR);
+      logger.log('GRID_COLOR : ' + CONFIG.GRID_COLOR, 'SETTINGS', 'grey');
+    },
+    AXES_HELPER: () => {
+      thrlender.axesHelper.visible = CONFIG.AXES_HELPER;
+      logger.log('AXES_HELPER : ' + CONFIG.AXES_HELPER, 'SETTINGS', 'grey');
+    },
+    ENABLE_DAMPING: () => {
+      thrlender.controls.enableDamping = CONFIG.ENABLE_DAMPING;
+      logger.log('ENABLE_DAMPING : ' + CONFIG.ENABLE_DAMPING, 'SETTINGS', 'grey');
+    },
+    TRANSFORM_CONTROLS_MODE: () => {
+      thrlender.transformControls.setMode(CONFIG.TRANSFORM_CONTROLS_MODE);
+      logger.log('TRANSFORM_CONTROLS_MODE : ' + CONFIG.TRANSFORM_CONTROLS_MODE, 'SETTINGS', 'grey');
+    },
+    SNAP_TO_GRID: () => {
+      CONFIG.SNAP_TO_GRID
+        ? (() => {
+            thrlender.transformControls.setTranslationSnap(1);
+            thrlender.transformControls.setRotationSnap((15 * Math.PI) / 180);
+            thrlender.transformControls.setScaleSnap(0.25);
+          })()
+        : (() => {
+            thrlender.transformControls.setTranslationSnap(null);
+            thrlender.transformControls.setRotationSnap(null);
+            thrlender.transformControls.setScaleSnap(null);
+          })();
+      logger.log('SNAP_TO_GRID : ' + CONFIG.SNAP_TO_GRID, 'SETTINGS', 'grey');
+    },
+    TRANSFORM_CONTROLS_ENABLED: () => {
+      CONFIG.TRANSFORM_CONTROLS_ENABLED
+        ? (() => {
+            thrlender.transformControls.enabled = true;
+            thrlender.transformControls.showX = true;
+            thrlender.transformControls.showY = true;
+            thrlender.transformControls.showZ = true;
+          })()
+        : (() => {
+            thrlender.transformControls.enabled = false;
+            thrlender.transformControls.showX = false;
+            thrlender.transformControls.showY = false;
+            thrlender.transformControls.showZ = false;
+          })();
+    },
+    LIGHTS_LIGHT_HELPERS_VISIBLE: () => {
+      // GET ALL LIGHT HELPERS IN SCENE.CHILDREN
+      thrlender.helpers = thrlender.scene.children.filter((obj) => obj.isLightHelper);
+      CONFIG.LIGHTS_LIGHT_HELPERS_VISIBLE
+        ? (() => {
+            thrlender.helpers.forEach((helper) => {
+              helper.visible = true;
+            });
+          })()
+        : (() => {
+            thrlender.helpers.forEach((helper) => {
+              helper.visible = false;
+            });
+          })();
+    },
+    LIGHTS_SKY_LIGHT_INTENSITY: () => {
+      thrlender.skyLight.intensity = CONFIG.LIGHTS_SKY_LIGHT_INTENSITY;
+      logger.log('LIGHTS_SKY_LIGHT_INTENSITY : ' + CONFIG.LIGHTS_SKY_LIGHT_INTENSITY, 'SETTINGS', 'grey');
+    },
+    LIGHTS_SKY_LIGHT_COLOR: () => {
+      logger.log('LIGHTS_SKY_LIGHT_COLOR : ' + CONFIG.LIGHTS_SKY_LIGHT_COLOR, 'SETTINGS', 'grey');
+      thrlender.skyLight.color.set(CONFIG.LIGHTS_SKY_LIGHT_COLOR);
+    },
+    LIGHTS_SKY_LIGHT_GROUND: () => {
+      logger.log('LIGHTS_SKY_LIGHT_GROUND : ' + CONFIG.LIGHTS_SKY_LIGHT_GROUND, 'SETTINGS', 'grey');
+      thrlender.skyLight.groundColor.set(CONFIG.LIGHTS_SKY_LIGHT_GROUND);
+    },
+  };
 };

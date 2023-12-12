@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { DEBUG } from './debug/debug';
+import { ThrlenderEngine } from './ThrlenderEngine';
 
-const init = (state) => {
+const init = () => {
+  const thrlender = ThrlenderEngine.getInstance();
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   const onMouseMove = function (event) {
@@ -11,34 +13,29 @@ const init = (state) => {
 
   const onMouseClick = function (event) {
     if (event.target.localName !== 'canvas') return;
-    if (state.transformControls.dragging) return;
-    raycaster.setFromCamera(mouse, state.camera);
-    const intersects = raycaster
-      .intersectObjects(state.scene.children)
-      .filter(
-        (obj) =>
-          state.sceneObjects.map((o) => o.uuid).includes(obj.object.uuid) ||
-          state.lights.map((o) => o.uuid).includes(obj.object?.light?.uuid)
-      );
+    if (thrlender.transformControls.dragging) return;
+    raycaster.setFromCamera(mouse, thrlender.camera);
+    const intersects = raycaster.intersectObjects(thrlender.scene.children).filter((obj) => obj.object.isSelectable);
     if (!intersects.length > 0) {
-      state.transformControls.detach();
+      thrlender.transformControls.detach();
       DEBUG.removeSelectedObject();
       return;
     }
-    if (state.selectedObject) {
-      state.transformControls.detach();
+    if (thrlender.selectedObject) {
+      thrlender.transformControls.detach();
       DEBUG.removeSelectedObject();
     }
+
     // IF IS LIGHTHELPER, SELECT LIGHT
     if (intersects[0].object?.light) {
-      state.selectedObject = intersects[0].object.light;
-      state.transformControls.attach(state.selectedObject);
-      DEBUG.addSelectedObject(state.selectedObject);
+      thrlender.selectedObject = intersects[0].object.light;
+      thrlender.transformControls.attach(thrlender.selectedObject);
+      DEBUG.addSelectedObject(thrlender.selectedObject);
       return;
     }
-    state.selectedObject = intersects[0].object;
-    state.transformControls.attach(state.selectedObject);
-    DEBUG.addSelectedObject(state.selectedObject);
+    thrlender.selectedObject = intersects[0].object;
+    thrlender.transformControls.attach(thrlender.selectedObject);
+    DEBUG.addSelectedObject(thrlender.selectedObject);
   };
   window.addEventListener('mousemove', onMouseMove, false);
   window.addEventListener('mousedown', onMouseClick, false);

@@ -1,13 +1,20 @@
 import GUI from 'lil-gui';
 import * as THREE from 'three';
 import { CONFIG } from '../utils/config';
+import { logger } from '../utils/logger';
+import { ThrlenderEngine } from '../ThrlenderEngine';
 
 const gui = new GUI();
 
 const init = () => {
+  // const thrlender = ThrlenderEngine.getInstance();
   //GLOBAL SETTINGS
   gui.add(CONFIG, 'WIREFRAME_MODE').listen();
   gui.add(CONFIG, 'ENABLE_DAMPING').listen();
+
+  const saveAndLoadFolder = gui.addFolder('Save and Load');
+  // saveAndLoadFolder.add(thrlender, 'save').listen();
+  // saveAndLoadFolder.add(thrlender, 'load').listen();
 
   //GRID SETTINGS
   const gridFolder = gui.addFolder('Grid Settings');
@@ -37,6 +44,7 @@ const init = () => {
 };
 
 const addSelectedObject = (selectedObject) => {
+  logger.log(selectedObject, 'debug', 'blue', 'New selected object :');
   const selectedObjectFolder = gui.addFolder('Selected Object');
   const objPosition = selectedObjectFolder.addFolder('position');
   objPosition.add(selectedObject.position, 'x').name('x').listen();
@@ -56,6 +64,9 @@ const addSelectedObject = (selectedObject) => {
   selectedObjectFolder.add(selectedObject.scale, 'y').name('sy').listen();
   selectedObjectFolder.add(selectedObject.scale, 'z').name('sz').listen();
   selectedObjectFolder.addColor(selectedObject.material, 'color').name('color').listen();
+  selectedObject.removeFromScene &&
+    selectedObjectFolder.add(selectedObject, 'removeFromScene')?.name('remove')?.listen();
+  // ADD FUNCTION TO REMOVE OBJECT SELECTED OBJECT
 };
 
 export const DEBUG = {
