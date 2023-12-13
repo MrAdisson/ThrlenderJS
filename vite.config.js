@@ -1,7 +1,7 @@
 export default {
   root: './src/',
   publicDir: '../static/',
-  base: './ThrlenderJS/',
+  base: '/ThrlenderJS/',
   server: {
     host: true,
     open: !('SANDBOX_URL' in process.env || 'CODESANDBOX_HOST' in process.env),
