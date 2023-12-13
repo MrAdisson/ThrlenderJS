@@ -181,8 +181,8 @@ export class ThrlenderEngine {
 
   setSelectedObject(object) {
     // ATTACH TRANSFORM CONTROLS TO OBJECT:
-    this.transformControls.attach(object);
     this.selectedObject = object;
+    this.selectedObject && this.transformControls.attach(object);
   }
   removeSelectedObject() {
     this.transformControls.detach();
