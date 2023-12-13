@@ -204,6 +204,7 @@ export class ThrlenderEngine {
         const contents = event.target.result;
         const loader = new FBXLoader();
         const object = loader.parse(contents);
+        object.name = 'FBX_Object';
         this.scene.add(object);
       };
     };

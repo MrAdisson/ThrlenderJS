@@ -13,6 +13,7 @@ const selectionnableObjectsTypes = [
   'directionalLightHelper',
   'ambientLightHelper',
   'ThrlenderSkyLightHelper',
+  'FBX_Object',
 ];
 
 const init = () => {
@@ -30,7 +31,7 @@ const init = () => {
     raycaster.setFromCamera(mouse, thrlender.camera);
     const intersects = raycaster
       .intersectObjects(thrlender.scene.children)
-      .filter((obj) => selectionnableObjectsTypes.includes(obj.object?.name));
+      .filter((obj) => selectionnableObjectsTypes.includes(obj.object?.name) || obj.object?.type === 'Group');
     if (!intersects.length > 0) {
       thrlender.transformControls.detach();
       thrlender.setSelectedObject(null);
