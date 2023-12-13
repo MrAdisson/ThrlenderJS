@@ -11,8 +11,6 @@ const thrlender = new ThrlenderEngine();
 thrlender.init();
 DEBUG.init();
 
-// TRIGGER PIPELINE TEST
-
 // UPDATE CONFIG:
 let previousConfig = { ...CONFIG };
 const updateConfig = function () {
