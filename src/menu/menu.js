@@ -113,6 +113,7 @@ const initMenu = () => {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.isSelectable = true; // CUSTOM PROPERTY
+      thrlender.setSelectedObject(mesh);
       thrlender.scene.add(mesh);
     }
     if (selectedObject?.type === 'light') {
@@ -120,6 +121,7 @@ const initMenu = () => {
       light.position.set(0, 3, 0);
       light.name = selectedObject.value;
       light.castShadow = true;
+      thrlender.setSelectedObject(light);
       thrlender.scene.add(light);
       if (selectedObject.createLightHelper !== undefined) {
         const lightHelper = selectedObject.createLightHelper(light);
