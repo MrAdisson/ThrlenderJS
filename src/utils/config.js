@@ -21,7 +21,9 @@ export const getConfigCallbacks = () => {
   return {
     WIREFRAME_MODE: () => {
       thrlender?.scene?.children?.forEach((obj) => {
-        if (!obj.isSelectable) return;
+        if (!obj?.material) return;
+        if (obj?.type?.includes('Light')) return;
+        if (obj?.type?.includes('Helper')) return;
         obj.material.wireframe = CONFIG.WIREFRAME_MODE;
       });
       logger.log('WIREFRAME_MODE : ' + CONFIG.WIREFRAME_MODE, 'SETTINGS', 'grey');
