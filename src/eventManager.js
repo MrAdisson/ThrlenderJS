@@ -1,5 +1,5 @@
 import { ThrlenderEngine } from './ThrlenderEngine';
-import { CONFIG } from './utils/config';
+import { CONFIG, selectionnableObjectsTypes } from './utils/config';
 import * as THREE from 'three';
 
 const init = () => {
@@ -57,6 +57,17 @@ const init = () => {
           thrlender.selectedObject.position.z
         );
       }
+    }
+    if (event.key === 'Tab') {
+      const objects = thrlender.scene.children.filter((obj) => selectionnableObjectsTypes.includes(obj.name));
+      const distances = [];
+      objects.forEach((obj) => {
+        const distance = thrlender.camera.position.distanceTo(obj.position);
+        distances.push(distance);
+      });
+      const minDistance = Math.min(...distances);
+      const index = distances.indexOf(minDistance);
+      thrlender.setSelectedObject(objects[index]);
     }
   });
 };

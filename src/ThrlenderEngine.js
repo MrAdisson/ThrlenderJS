@@ -1,7 +1,7 @@
 import * as THREE from 'three';
+import { CONFIG } from './utils/config';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import { CONFIG } from './utils/config';
 import { DEBUG } from './debug/debug';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 

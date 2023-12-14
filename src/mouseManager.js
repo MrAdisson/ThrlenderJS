@@ -1,20 +1,7 @@
 import * as THREE from 'three';
 import { DEBUG } from './debug/debug';
 import { ThrlenderEngine } from './ThrlenderEngine';
-
-const selectionnableObjectsTypes = [
-  'cube',
-  'sphere',
-  'cylinder',
-  'cone',
-  'plane',
-  'pointLightHelper',
-  'spotLightHelper',
-  'directionalLightHelper',
-  'ambientLightHelper',
-  'ThrlenderSkyLightHelper',
-  'FBX_Object',
-];
+import { selectionnableObjectsTypes } from './utils/config';
 
 const init = () => {
   const thrlender = ThrlenderEngine.getInstance();

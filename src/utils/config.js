@@ -16,6 +16,20 @@ export const CONFIG = {
   LIGHTS_SKY_LIGHT_GROUND: '#333333',
 };
 
+export const selectionnableObjectsTypes = [
+  'cube',
+  'sphere',
+  'cylinder',
+  'cone',
+  'plane',
+  'pointLightHelper',
+  'spotLightHelper',
+  'directionalLightHelper',
+  'ambientLightHelper',
+  'ThrlenderSkyLightHelper',
+  'FBX_Object',
+];
+
 export const getConfigCallbacks = () => {
   const thrlender = ThrlenderEngine.getInstance();
   return {
