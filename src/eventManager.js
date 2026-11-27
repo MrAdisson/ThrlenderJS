@@ -10,7 +10,7 @@ const init = () => {
   window.addEventListener('resize', resizeHandler);
 
   //   KEYBOARD HANDLER:
-  window.addEventListener('keydown', (event) => {
+  const onKeyDown = (event) => {
     if (event.key === 'd') {
       const thrlender = ThrlenderEngine.getInstance();
       console.log(thrlender);
@@ -69,7 +69,13 @@ const init = () => {
       const index = distances.indexOf(minDistance);
       thrlender.setSelectedObject(objects[index]);
     }
-  });
+  };
+  window.addEventListener('keydown', onKeyDown);
+
+  return () => {
+    window.removeEventListener('resize', resizeHandler);
+    window.removeEventListener('keydown', onKeyDown);
+  };
 };
 
 export const eventManager = {

@@ -34,7 +34,7 @@ Open the local URL printed by Vite in your browser. To create the static product
 npm run build
 ```
 
-The build is written to `dist/` and uses `/ThrlenderJS/` as its base path. `npm run deploy` builds with the production configuration and a `/` base path.
+The build is written to `dist/` and uses `/ThrlenderJS/` as its base path. `npm run deploy` builds with the production configuration and a `/` base path. Both build commands check TypeScript before bundling. Run `npm run typecheck` to check the types independently.
 
 ## Controls
 

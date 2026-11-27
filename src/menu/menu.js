@@ -3,7 +3,8 @@ import { CONFIG } from '../utils/config';
 import { ThrlenderEngine } from '../ThrlenderEngine';
 // import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const initMenu = () => {
+/** @param {HTMLElement} host */
+const initMenu = (host) => {
   const thrlender = ThrlenderEngine.getInstance();
   const menu = document.createElement('div');
   // ID MENU
@@ -19,7 +20,8 @@ const initMenu = () => {
   menu.style.padding = '10px';
   menu.style.border = '1px solid black';
   menu.style.backgroundColor = '#1f1f1f';
-  document.body.appendChild(menu);
+  host.appendChild(menu);
+  let showMenuBtn;
 
   // HIDE MENU
   const hideMenuBtn = document.createElement('button');
@@ -32,7 +34,7 @@ const initMenu = () => {
   hideMenuBtn.style.color = 'white';
   hideMenuBtn.style.cursor = 'pointer';
   hideMenuBtn.addEventListener('click', () => {
-    hideMenu();
+    showMenuBtn = hideMenu(menu, host);
   });
 
   menu.appendChild(hideMenuBtn);
@@ -132,10 +134,13 @@ const initMenu = () => {
       }
     }
   });
+  return () => {
+    menu.remove();
+    showMenuBtn?.remove();
+  };
 };
 
-const hideMenu = () => {
-  const menu = document.getElementById('menu');
+const hideMenu = (menu, host) => {
   menu.style.display = 'none';
   // SHOW BTN TO DISPLAY MENU BACK
   const showMenuBtn = document.createElement('button');
@@ -151,15 +156,11 @@ const hideMenu = () => {
   showMenuBtn.style.color = 'white';
   showMenuBtn.style.cursor = 'pointer';
   showMenuBtn.addEventListener('click', () => {
-    showMenu();
+    menu.style.display = 'flex';
     showMenuBtn.remove();
   });
-  document.body.appendChild(showMenuBtn);
-};
-
-const showMenu = () => {
-  const menu = document.getElementById('menu');
-  menu.style.display = 'flex';
+  host.appendChild(showMenuBtn);
+  return showMenuBtn;
 };
 
 export const MENU = {
