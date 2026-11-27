@@ -18,7 +18,7 @@ La scène et les réglages vivent en mémoire dans le navigateur. La sauvegarde 
 <!-- builder:environments -->
 ## Environnements et hébergement
 
-Le README indique npm run dev pour le développement. npm run build produit dist avec la base /ThrlenderJS/ et des sourcemaps. Le workflow GitHub Pages utilise Node 18 et publie dist. npm run deploy compile avec la base / directement dans /var/www/thrlender. Le profil App Builder utilise la compilation standard et sert dist avec Vite Preview. [Configuration standard](../vite.config.js) · [Configuration de production](../vite.config.prod.js) · [Workflow](../.github/workflows/static.yml) · [Profil](../.builder/project.yml)
+Le README indique npm run dev pour le développement. npm run build produit dist avec la base /ThrlenderJS/ et des sourcemaps. Le workflow GitHub Pages utilise Node 18 et publie dist. npm run deploy compile avec la base / directement dans /var/www/thrlender. Le profil App Builder installe explicitement les dépendances de développement en staging pour disposer de TypeScript pendant la compilation standard, puis sert dist avec Vite Preview. [Configuration standard](../vite.config.js) · [Configuration de production](../vite.config.prod.js) · [Workflow](../.github/workflows/static.yml) · [Profil](../.builder/project.yml)
 
 <!-- builder:conventions -->
 ## Conventions
