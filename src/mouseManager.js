@@ -1,53 +1,33 @@
 import * as THREE from 'three';
-import { DEBUG } from './debug/debug';
-import { ThrlenderEngine } from './ThrlenderEngine';
 import { selectionnableObjectsTypes } from './utils/config';
 
-const init = () => {
-  const thrlender = ThrlenderEngine.getInstance();
+/**
+ * @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender
+ * @param {ReturnType<import('./debug/debug').DEBUG.init>} debug
+ */
+const init = (thrlender, debug) => {
+  const canvas = thrlender.renderer.domElement;
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
-  const onMouseMove = function (event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  };
 
-  const onMouseClick = function (event) {
-    if (event.target.localName !== 'canvas') return;
+  const onMouseClick = (event) => {
     if (thrlender.transformControls.dragging) return;
+    const bounds = canvas.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    mouse.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+    mouse.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
     raycaster.setFromCamera(mouse, thrlender.camera);
     const intersects = raycaster
       .intersectObjects(thrlender.scene.children)
       .filter((obj) => selectionnableObjectsTypes.includes(obj.object?.name) || obj.object?.type === 'Group');
-    if (!intersects.length > 0) {
-      thrlender.transformControls.detach();
-      thrlender.setSelectedObject(null);
-      DEBUG.removeSelectedObject();
-      return;
-    }
-    if (thrlender.selectedObject) {
-      thrlender.transformControls.detach();
-      thrlender.setSelectedObject(null);
-      DEBUG.removeSelectedObject();
-    }
+    const hit = intersects[0]?.object;
+    const selection = hit?.light ?? hit ?? null;
+    thrlender.setSelectedObject(selection);
+    debug.showSelection(selection);
+  };
 
-    // IF IS LIGHTHELPER, SELECT LIGHT
-    if (intersects[0].object?.light) {
-      thrlender.setSelectedObject(intersects[0].object.light);
-      thrlender.transformControls.attach(thrlender.selectedObject);
-      DEBUG.addSelectedObject(thrlender.selectedObject);
-      return;
-    }
-    thrlender.setSelectedObject(intersects[0].object);
-    thrlender.transformControls.attach(thrlender.selectedObject);
-    DEBUG.addSelectedObject(thrlender.selectedObject);
-  };
-  window.addEventListener('mousemove', onMouseMove, false);
-  window.addEventListener('mousedown', onMouseClick, false);
-  return () => {
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mousedown', onMouseClick);
-  };
+  canvas.addEventListener('mousedown', onMouseClick);
+  return () => canvas.removeEventListener('mousedown', onMouseClick);
 };
 
 export const mouseManager = {

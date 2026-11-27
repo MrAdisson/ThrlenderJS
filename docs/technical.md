@@ -8,7 +8,7 @@ React monte l’application, qui utilise TypeScript pour son point d’entrée e
 <!-- builder:architecture -->
 ## Architecture
 
-La page HTML charge `main.tsx`, qui monte React. Le composant `App` fournit le conteneur de l’éditeur à `mountEditor`. Ce module définit le contrat TypeScript des opérations utilisées sur le moteur et initialise les menus et les gestionnaires souris et clavier existants. Au démontage, il arrête la boucle et libère les contrôles, le rendu et les écouteurs. ThrlenderEngine possède la scène, la caméra, le rendu et les contrôles Three.js. La boucle requestAnimationFrame actualise l’orbite, applique les changements de configuration et rend la scène. [Point d’entrée](../src/main.tsx) · [Montage de l’éditeur](../src/app/mountEditor.ts) · [Moteur](../src/ThrlenderEngine.js)
+La page HTML charge `main.tsx`, qui monte React. Le composant `App` fournit le conteneur de l’éditeur à `mountEditor`. Ce module utilise un contrat TypeScript pour initialiser une instance du moteur, ses réglages, les menus et les gestionnaires historiques. Un observateur ajuste le canevas et la projection aux dimensions du conteneur. La boucle `requestAnimationFrame` applique les changements de configuration, actualise l’orbite et rend la scène. Au démontage, le raccordement arrête la boucle et libère l’observateur, les interfaces et les écouteurs. Le moteur JavaScript libère les contrôles, les lectures locales en cours et les ressources Three.js de la scène et du rendu. [Point d’entrée](../src/main.tsx) · [Montage de l’éditeur](../src/app/mountEditor.ts) · [Moteur](../src/ThrlenderEngine.js)
 
 <!-- builder:data -->
 ## Données
@@ -28,7 +28,7 @@ Le code se trouve sous `src`. Les modules React et leur raccordement à l’édi
 <!-- builder:quality -->
 ## Qualité
 
-Les commandes `npm run build` et `npm run deploy` vérifient les types avec `npm run typecheck` avant de compiler. App Builder exécute aussi la vérification des types. `npm test` vérifie les chemins de sortie et les URL des ressources des deux bundles, sans écrire dans leurs répertoires de déploiement. [Manifeste](../package.json) · [Workflow](../.github/workflows/static.yml)
+Les commandes `npm run build` et `npm run deploy` vérifient les types avec `npm run typecheck` avant de compiler. App Builder exécute aussi la vérification des types. `npm test` vérifie les chemins de sortie et les URL des ressources des deux bundles, sans écrire dans leurs répertoires de déploiement. Playwright Core exécute aussi les tests de l’éditeur dans Chromium, avec `CHROME_PATH` ou un Chromium déjà installé pour Playwright. [Manifeste](../package.json) · [Workflow](../.github/workflows/static.yml)
 
 <!-- builder:security -->
 ## Sécurité et données personnelles

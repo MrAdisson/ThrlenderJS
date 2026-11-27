@@ -1,19 +1,34 @@
 import * as THREE from 'three';
-import { CONFIG } from './utils/config';
+import { createConfig } from './utils/config';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import { DEBUG } from './debug/debug';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
-export class ThrlenderEngine {
-  constructor() {
-    if (!ThrlenderEngine.instance) {
-      ThrlenderEngine.instance = this;
+// A scene can share geometries, materials and textures across several meshes.
+function disposeScene(scene) {
+  const resources = new Set();
+  resources.add(scene.background?.isTexture ? scene.background : null);
+  resources.add(scene.environment);
+  scene.traverse((object) => {
+    resources.add(object.geometry);
+    resources.add(object.shadow);
+    resources.add(object.skeleton);
+    for (const material of [].concat(object.material ?? [])) {
+      resources.add(material);
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) resources.add(value);
+      }
     }
-  }
-  static getInstance() {
-    return ThrlenderEngine.instance;
-  }
+  });
+  for (const resource of resources) resource?.dispose();
+  scene.clear();
+}
+
+export class ThrlenderEngine extends THREE.EventDispatcher {
+  config = createConfig();
+  fileEvents = new AbortController();
+  readers = new Set();
+  objectUrls = new Set();
 
   /** @param {HTMLElement} host */
   init(host) {
@@ -30,27 +45,28 @@ export class ThrlenderEngine {
   }
 
   dispose() {
-    this.controls.dispose();
-    this.transformControls.dispose();
-    this.renderer.dispose();
-    this.renderer.domElement.remove();
-    if (ThrlenderEngine.instance === this) {
-      ThrlenderEngine.instance = undefined;
-    }
-  }
+    this.fileEvents.abort();
+    for (const reader of this.readers) reader.abort();
+    this.readers.clear();
+    for (const url of this.objectUrls) URL.revokeObjectURL(url);
+    this.objectUrls.clear();
 
-  initLoadedScene() {
-    this.initGrid();
-    this.initAxesHelper();
-    this.initTransformControls();
-    this.skyLight = this.scene.getObjectByName('ThrlenderSkyLight');
+    this.controls?.dispose();
+    this.transformControls?.removeEventListener('dragging-changed', this.syncCameraControls);
+    this.transformControls?.detach();
+    this.transformControls?.removeFromParent();
+    this.transformControls?.dispose();
+    if (this.scene) disposeScene(this.scene);
+    this.renderer?.dispose();
+    this.renderer?.forceContextLoss();
+    this.renderer?.domElement.remove();
   }
 
   initScene() {
     this.scene = new THREE.Scene();
   }
   initCamera() {
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
     this.camera.position.set(0, 5, 10);
     this.camera.name = 'ThrlenderCamera';
     this.scene.add(this.camera);
@@ -58,21 +74,20 @@ export class ThrlenderEngine {
 
   initRenderer() {
     this.renderer = new THREE.WebGLRenderer();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
   }
   initControls() {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = CONFIG.ENABLE_DAMPING;
+    this.controls.enableDamping = this.config.ENABLE_DAMPING;
     this.controls.dampingFactor = 0.05;
     this.controls.screenSpacePanning = false;
   }
   initDefaultSkylight() {
     this.skyLight = new THREE.HemisphereLight(
-      CONFIG.LIGHTS_SKY_LIGHT_COLOR,
-      CONFIG.LIGHTS_SKY_LIGHT_GROUND,
-      CONFIG.LIGHTS_SKY_LIGHT_INTENSITY
+      this.config.LIGHTS_SKY_LIGHT_COLOR,
+      this.config.LIGHTS_SKY_LIGHT_GROUND,
+      this.config.LIGHTS_SKY_LIGHT_INTENSITY
     );
     this.skyLight.position.set(0, 20, 0);
     this.skyLight.name = 'ThrlenderSkyLight';
@@ -83,8 +98,8 @@ export class ThrlenderEngine {
     this.scene.add(this.skyLight);
   }
   initGrid() {
-    this.gridHelper = new THREE.GridHelper(100, 100, CONFIG.GRID_COLOR, CONFIG.GRID_COLOR);
-    this.gridHelper.visible = CONFIG.GRID_VISIBLE;
+    this.gridHelper = new THREE.GridHelper(100, 100, this.config.GRID_COLOR, this.config.GRID_COLOR);
+    this.gridHelper.visible = this.config.GRID_VISIBLE;
     this.gridHelper.name = 'ThrlenderGridHelper';
     this.scene.add(this.gridHelper);
   }
@@ -92,8 +107,9 @@ export class ThrlenderEngine {
   initTransformControls() {
     this.transformControls = new TransformControls(this.camera, this.renderer.domElement);
     this.transformControls.name = 'ThrlenderTransformControls';
+    this.transformControls.addEventListener('dragging-changed', this.syncCameraControls);
     // DEFAULT SNAP TO GRID
-    if (CONFIG.SNAP_TO_GRID) {
+    if (this.config.SNAP_TO_GRID) {
       this.transformControls.setTranslationSnap(1);
       this.transformControls.setRotationSnap((15 * Math.PI) / 180);
       this.transformControls.setScaleSnap(0.25);
@@ -103,7 +119,7 @@ export class ThrlenderEngine {
 
   initAxesHelper() {
     this.axesHelper = new THREE.AxesHelper(5);
-    this.axesHelper.visible = CONFIG.AXES_HELPER;
+    this.axesHelper.visible = this.config.AXES_HELPER;
     this.axesHelper.name = 'ThrlenderAxesHelper';
     this.scene.add(this.axesHelper);
   }
@@ -116,110 +132,132 @@ export class ThrlenderEngine {
     this.controls.update();
   }
 
-  syncCameraControls() {
-    this.controls.enabled = !this.transformControls.dragging;
-  }
+  syncCameraControls = ({ value: dragging }) => {
+    this.controls.enabled = !dragging;
+  };
 
-  resize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+  /**
+   * @param {number} width
+   * @param {number} height
+   */
+  resize(width, height) {
+    this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(width, height, false);
   }
 
   // SAVE AND LOAD METHODS:
 
   save() {
     // CLEAN SCENE FROM AXES HELPER, GRID HELPER, TRANSFORM CONTROLS:
-    this.scene.remove(this.axesHelper);
-    this.scene.remove(this.gridHelper);
-    this.scene.remove(this.transformControls);
+    const editorObjects = [this.axesHelper, this.gridHelper, this.transformControls];
+    this.scene.remove(...editorObjects);
 
-    const jsonScene = JSON.stringify(this.scene.toJSON());
+    let jsonScene;
+    try {
+      jsonScene = JSON.stringify(this.scene.toJSON());
+    } finally {
+      this.scene.add(...editorObjects);
+    }
 
-    // RE-ADD AXES HELPER, GRID HELPER, TRANSFORM CONTROLS:
-    this.scene.add(this.axesHelper);
-    this.scene.add(this.gridHelper);
-    this.scene.add(this.transformControls);
-
-    // DOWNLOAD JSON SCENE:
     const blob = new Blob([jsonScene], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
+    this.objectUrls.add(url);
     const link = document.createElement('a');
     link.href = url;
     link.download = 'scene.thrl';
     link.click();
-    link.remove();
+    // Give the browser a task to consume the download URL.
+    setTimeout(() => this.releaseUrl(url), 0);
+  }
+
+  releaseUrl(url) {
+    if (this.objectUrls.delete(url)) URL.revokeObjectURL(url);
+  }
+
+  readLocalFile(extension, read, onLoad) {
+    const { signal } = this.fileEvents;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = extension;
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      this.readers.add(reader);
+      reader.addEventListener('loadend', () => this.readers.delete(reader), { once: true });
+      reader.addEventListener('load', () => onLoad(reader.result), { once: true, signal });
+      read(reader, file);
+    }, { once: true, signal });
+    input.click();
   }
 
   load() {
-    // CLEAR CURRENT SCENE:
-    // LOAD JSON SCENE:
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.thrl';
-    input.onchange = (event) => {
-      const reader = new FileReader();
-      reader.readAsText(event.target.files[0]);
-      reader.onload = (event) => {
-        if (ThrlenderEngine.getInstance() !== this) return;
-        const jsonScene = JSON.parse(event.target.result);
-        const loader = new THREE.ObjectLoader();
-        this.transformControls.detach();
-        this.scene.children.forEach((child) => {
-          if (child.name !== '') {
-            this.scene.remove(child);
-          }
-        });
-        this.scene = loader.parse(jsonScene);
-        // ADD HELPER TO LIGHTS:
-        this.scene.children.forEach((child) => {
-          if (child.type?.includes('Light')) {
-            const lightHelper = new THREE.PointLightHelper(child, 1);
-            lightHelper.name = `${child.name}Helper`;
-            this.scene.add(lightHelper);
-          }
-        });
-        this.transformControls.dispose();
-        this.initLoadedScene();
-      };
-    };
-    input.click();
-    input.remove();
+    this.readLocalFile('.thrl', (reader, file) => reader.readAsText(file), (contents) => {
+      const scene = new THREE.ObjectLoader().parse(JSON.parse(contents));
+      this.setSelectedObject(null);
+      this.dispatchEvent({ type: 'selection-cleared' });
+      this.transformControls.removeFromParent();
+      disposeScene(this.scene);
+
+      this.scene = scene;
+      for (const child of [...scene.children]) {
+        if (!child.isLight) continue;
+        const helper = new THREE.PointLightHelper(child, 1);
+        helper.name = child.name + 'Helper';
+        scene.add(helper);
+      }
+      this.initGrid();
+      this.initAxesHelper();
+      scene.add(this.transformControls);
+      this.skyLight = scene.getObjectByName('ThrlenderSkyLight');
+    });
   }
 
   setSelectedObject(object) {
-    // ATTACH TRANSFORM CONTROLS TO OBJECT:
-    this.selectedObject = object;
-    this.selectedObject && this.transformControls.attach(object);
+    this.selectedObject = object ?? null;
+    if (object) this.transformControls.attach(object);
+    else this.transformControls.detach();
   }
+
   removeSelectedObject() {
+    const object = this.selectedObject;
+    if (!object) return;
+
     this.transformControls.detach();
-    this.scene.remove(this.selectedObject);
-    this.selectedObject.material.dispose();
-    this.selectedObject.geometry.dispose();
-    DEBUG.removeSelectedObject();
+    this.scene.remove(object);
+    object.material.dispose();
+    object.geometry.dispose();
     this.selectedObject = null;
+    this.dispatchEvent({ type: 'selection-cleared' });
   }
 
   loadFbx() {
-    // LOAD FBX SCENE:
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.fbx';
-    input.onchange = (event) => {
-      const reader = new FileReader();
-      reader.readAsArrayBuffer(event.target.files[0]);
-      reader.onload = (event) => {
-        if (ThrlenderEngine.getInstance() !== this) return;
-        console.log(event);
-        const contents = event.target.result;
-        const loader = new FBXLoader();
-        const object = loader.parse(contents);
+    this.readLocalFile('.fbx', (reader, file) => reader.readAsArrayBuffer(file), (contents) => {
+      const manager = new THREE.LoadingManager();
+      const textureUrls = new Set();
+      manager.setURLModifier((url) => {
+        if (url.startsWith('blob:')) {
+          textureUrls.add(url);
+          this.objectUrls.add(url);
+        }
+        return url;
+      });
+      const releaseTextures = () => {
+        for (const url of textureUrls) this.releaseUrl(url);
+        textureUrls.clear();
+      };
+      manager.onLoad = releaseTextures;
+
+      try {
+        const object = new FBXLoader(manager).parse(contents, '');
         object.name = 'FBX_Object';
         this.scene.add(object);
-      };
-    };
-    input.click();
-    input.remove();
+      } catch (error) {
+        releaseTextures();
+        throw error;
+      }
+    });
   }
 }

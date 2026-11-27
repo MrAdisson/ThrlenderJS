@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { CONFIG } from '../utils/config';
-import { ThrlenderEngine } from '../ThrlenderEngine';
-// import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-/** @param {HTMLElement} host */
-const initMenu = (host) => {
-  const thrlender = ThrlenderEngine.getInstance();
+/**
+ * @param {HTMLElement} host
+ * @param {import('../ThrlenderEngine').ThrlenderEngine} thrlender
+ */
+const initMenu = (host, thrlender) => {
+  const listeners = new AbortController();
+  const options = { signal: listeners.signal };
   const menu = document.createElement('div');
   // ID MENU
   menu.id = 'menu';
@@ -34,8 +35,8 @@ const initMenu = (host) => {
   hideMenuBtn.style.color = 'white';
   hideMenuBtn.style.cursor = 'pointer';
   hideMenuBtn.addEventListener('click', () => {
-    showMenuBtn = hideMenu(menu, host);
-  });
+    showMenuBtn = hideMenu(menu, host, options);
+  }, options);
 
   menu.appendChild(hideMenuBtn);
   const menuSelect = document.createElement('select');
@@ -108,7 +109,7 @@ const initMenu = (host) => {
       const geometry = selectedObject.createGeometry();
       const material = new THREE.MeshLambertMaterial({
         color: colorOption.value,
-        wireframe: CONFIG.WIREFRAME_MODE,
+        wireframe: thrlender.config.WIREFRAME_MODE,
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = selectedObject.value;
@@ -133,14 +134,15 @@ const initMenu = (host) => {
         thrlender.scene.add(lightHelper);
       }
     }
-  });
+  }, options);
   return () => {
+    listeners.abort();
     menu.remove();
     showMenuBtn?.remove();
   };
 };
 
-const hideMenu = (menu, host) => {
+const hideMenu = (menu, host, options) => {
   menu.style.display = 'none';
   // SHOW BTN TO DISPLAY MENU BACK
   const showMenuBtn = document.createElement('button');
@@ -158,7 +160,7 @@ const hideMenu = (menu, host) => {
   showMenuBtn.addEventListener('click', () => {
     menu.style.display = 'flex';
     showMenuBtn.remove();
-  });
+  }, { ...options, once: true });
   host.appendChild(showMenuBtn);
   return showMenuBtn;
 };

@@ -36,6 +36,8 @@ npm run build
 
 The build is written to `dist/` and uses `/ThrlenderJS/` as its base path. `npm run deploy` builds with the production configuration and a `/` base path. Both build commands check TypeScript before bundling. Run `npm run typecheck` to check the types independently.
 
+With Node.js 20 or newer, run `npm test` to check the bundles and editor behavior. The editor tests use an existing Chromium installation. Set `CHROME_PATH` to its executable, or use a Chromium already installed for Playwright 1.64.1.
+
 ## Controls
 
 - Drag with the mouse to orbit the camera; use the mouse wheel to zoom.

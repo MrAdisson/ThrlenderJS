@@ -9,5 +9,5 @@ export function App() {
     if (host) return mountEditor(host);
   }, []);
 
-  return <div ref={editorHost} />;
+  return <div className="editor-host" ref={editorHost} />;
 }
