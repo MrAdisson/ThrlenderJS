@@ -1,13 +1,13 @@
-import { ThrlenderEngine } from './ThrlenderEngine';
 import { selectionnableObjectsTypes } from './utils/config';
 import * as THREE from 'three';
 
 /** @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender */
 const init = (thrlender) => {
+  const canvas = thrlender.renderer.domElement;
   const config = thrlender.config;
 
   const onKeyDown = (event) => {
-    if (event.key === 'd') console.log(thrlender);
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey && event.key === 'Tab') return;
     if (event.code === 'Space') {
       event.preventDefault();
       config.TRANSFORM_CONTROLS_ENABLED = !config.TRANSFORM_CONTROLS_ENABLED;
@@ -61,12 +61,13 @@ const init = (thrlender) => {
       const minDistance = Math.min(...distances);
       const index = distances.indexOf(minDistance);
       thrlender.setSelectedObject(objects[index]);
+      // Keep the scene shortcut, and let Tab continue into the editor controls.
     }
   };
-  window.addEventListener('keydown', onKeyDown);
+  canvas.addEventListener('keydown', onKeyDown);
 
   return () => {
-    window.removeEventListener('keydown', onKeyDown);
+    canvas.removeEventListener('keydown', onKeyDown);
   };
 };
 

@@ -3,14 +3,14 @@ import { selectionnableObjectsTypes } from './utils/config';
 
 /**
  * @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender
- * @param {ReturnType<import('./debug/debug').DEBUG.init>} debug
  */
-const init = (thrlender, debug) => {
+const init = (thrlender) => {
   const canvas = thrlender.renderer.domElement;
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 
   const onMouseClick = (event) => {
+    canvas.focus({ preventScroll: true });
     if (thrlender.transformControls.dragging) return;
     const bounds = canvas.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
@@ -19,11 +19,9 @@ const init = (thrlender, debug) => {
     raycaster.setFromCamera(mouse, thrlender.camera);
     const intersects = raycaster
       .intersectObjects(thrlender.scene.children)
-      .filter((obj) => selectionnableObjectsTypes.includes(obj.object?.name) || obj.object?.type === 'Group');
+      .filter(({ object }) => selectionnableObjectsTypes.includes(object.name) || object.type === 'Group');
     const hit = intersects[0]?.object;
-    const selection = hit?.light ?? hit ?? null;
-    thrlender.setSelectedObject(selection);
-    debug.showSelection(selection);
+    thrlender.setSelectedObject(hit);
   };
 
   canvas.addEventListener('mousedown', onMouseClick);
