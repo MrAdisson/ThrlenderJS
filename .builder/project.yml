@@ -4,6 +4,7 @@ setup: [npm ci]
 verify:
   build: npm run build
   typecheck: npm run typecheck
+  test: npm test
 egress_allow: [registry.npmjs.org]
 environments:
   staging:

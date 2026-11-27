@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "npm run typecheck && vite build",
     "deploy": "npm run typecheck && vite build --config vite.config.prod.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],

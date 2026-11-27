@@ -28,7 +28,7 @@ Le code se trouve sous `src`. Les modules React et leur raccordement à l’édi
 <!-- builder:quality -->
 ## Qualité
 
-Les commandes `npm run build` et `npm run deploy` vérifient les types avec `npm run typecheck` avant de compiler. App Builder exécute aussi la vérification des types. Le dépôt ne contient pas de suite automatisée et `npm test` affiche un message indiquant cette absence. [Manifeste](../package.json) · [Workflow](../.github/workflows/static.yml)
+Les commandes `npm run build` et `npm run deploy` vérifient les types avec `npm run typecheck` avant de compiler. App Builder exécute aussi la vérification des types. `npm test` vérifie les chemins de sortie et les URL des ressources des deux bundles, sans écrire dans leurs répertoires de déploiement. [Manifeste](../package.json) · [Workflow](../.github/workflows/static.yml)
 
 <!-- builder:security -->
 ## Sécurité et données personnelles
