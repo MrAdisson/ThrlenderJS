@@ -1,53 +1,46 @@
 import { ThrlenderEngine } from './ThrlenderEngine';
-import { CONFIG, selectionnableObjectsTypes } from './utils/config';
+import { selectionnableObjectsTypes } from './utils/config';
 import * as THREE from 'three';
 
-const init = () => {
-  const thrlender = ThrlenderEngine.getInstance();
-  const resizeHandler = function () {
-    thrlender.resize();
-  };
-  window.addEventListener('resize', resizeHandler);
+/** @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender */
+const init = (thrlender) => {
+  const config = thrlender.config;
 
-  //   KEYBOARD HANDLER:
   const onKeyDown = (event) => {
-    if (event.key === 'd') {
-      const thrlender = ThrlenderEngine.getInstance();
-      console.log(thrlender);
-    }
+    if (event.key === 'd') console.log(thrlender);
     if (event.code === 'Space') {
       event.preventDefault();
-      CONFIG.TRANSFORM_CONTROLS_ENABLED = !CONFIG.TRANSFORM_CONTROLS_ENABLED;
+      config.TRANSFORM_CONTROLS_ENABLED = !config.TRANSFORM_CONTROLS_ENABLED;
     }
     //   S TOGGLE SCALE MODE
     if (event.key === 's') {
       event.preventDefault();
-      CONFIG.TRANSFORM_CONTROLS_MODE = 'scale';
+      config.TRANSFORM_CONTROLS_MODE = 'scale';
     }
     //   R TOGGLE ROTATE MODE
     if (event.key === 'r') {
       event.preventDefault();
-      CONFIG.TRANSFORM_CONTROLS_MODE = 'rotate';
+      config.TRANSFORM_CONTROLS_MODE = 'rotate';
     }
     //   T TOGGLE TRANSLATE MODE
     if (event.key === 't') {
       event.preventDefault();
-      CONFIG.TRANSFORM_CONTROLS_MODE = 'translate';
+      config.TRANSFORM_CONTROLS_MODE = 'translate';
     }
     //   G TOGGLE GRID
     if (event.key === 'g') {
       event.preventDefault();
-      CONFIG.GRID_VISIBLE = !CONFIG.GRID_VISIBLE;
+      config.GRID_VISIBLE = !config.GRID_VISIBLE;
     }
     //   A TOGGLE AXES HELPER
     if (event.key === 'a') {
       event.preventDefault();
-      CONFIG.AXES_HELPER = !CONFIG.AXES_HELPER;
+      config.AXES_HELPER = !config.AXES_HELPER;
     }
     //   W TOGGLE WIREFRAME MODE
     if (event.key === 'w') {
       event.preventDefault();
-      CONFIG.WIREFRAME_MODE = !CONFIG.WIREFRAME_MODE;
+      config.WIREFRAME_MODE = !config.WIREFRAME_MODE;
     }
     if (event.key === 'f') {
       if (thrlender.selectedObject) {
@@ -73,7 +66,6 @@ const init = () => {
   window.addEventListener('keydown', onKeyDown);
 
   return () => {
-    window.removeEventListener('resize', resizeHandler);
     window.removeEventListener('keydown', onKeyDown);
   };
 };

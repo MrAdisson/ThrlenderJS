@@ -1,17 +1,32 @@
 import GUI from 'lil-gui';
 import * as THREE from 'three';
-import { CONFIG } from '../utils/config';
 import { logger } from '../utils/logger';
-import { ThrlenderEngine } from '../ThrlenderEngine';
 
-let gui;
+/**
+ * @param {HTMLElement} host
+ * @param {import('../ThrlenderEngine').ThrlenderEngine} thrlender
+ */
+const init = (host, thrlender) => {
+  const gui = new GUI({ container: host });
+  gui.domElement.classList.add('editor-settings');
+  const config = thrlender.config;
 
-const init = () => {
-  gui = new GUI();
-  const thrlender = ThrlenderEngine.getInstance();
+  // lil-gui releases its window drag listeners on mouseup or touchend.
+  const dragEvents = new AbortController();
+  const options = { signal: dragEvents.signal };
+  let mouseDrag = false;
+  let touchDrag = false;
+  gui.domElement.addEventListener('mousedown', (event) => {
+    if (event.target.closest('.controller.number input, .controller.number .slider')) mouseDrag = true;
+  }, options);
+  gui.domElement.addEventListener('touchstart', (event) => {
+    if (event.target.closest('.controller.number .slider')) touchDrag = event.touches.length === 1;
+  }, options);
+  window.addEventListener('mouseup', () => { mouseDrag = false; }, options);
+  window.addEventListener('touchend', () => { touchDrag = false; }, options);
   //GLOBAL SETTINGS
-  gui.add(CONFIG, 'WIREFRAME_MODE').listen();
-  gui.add(CONFIG, 'ENABLE_DAMPING').listen();
+  gui.add(config, 'WIREFRAME_MODE').listen();
+  gui.add(config, 'ENABLE_DAMPING').listen();
 
   const saveAndLoadFolder = gui.addFolder('Save and Load');
   saveAndLoadFolder.add(thrlender, 'save').listen();
@@ -20,65 +35,67 @@ const init = () => {
 
   //GRID SETTINGS
   const gridFolder = gui.addFolder('Grid Settings');
-  gridFolder.add(CONFIG, 'GRID_VISIBLE').name('VISIBLE').listen();
-  gridFolder.addColor(CONFIG, 'GRID_COLOR').name('COLOR').listen();
-  gridFolder.add(CONFIG, 'AXES_HELPER').listen();
+  gridFolder.add(config, 'GRID_VISIBLE').name('VISIBLE').listen();
+  gridFolder.addColor(config, 'GRID_COLOR').name('COLOR').listen();
+  gridFolder.add(config, 'AXES_HELPER').listen();
 
   //TRANSFORM CONTROLS SETTINGS
   const transformControlsFolder = gui.addFolder('Transform Controls');
-  transformControlsFolder.add(CONFIG, 'TRANSFORM_CONTROLS_ENABLED').name('ENABLED').listen();
+  transformControlsFolder.add(config, 'TRANSFORM_CONTROLS_ENABLED').name('ENABLED').listen();
   transformControlsFolder
-    .add(CONFIG, 'TRANSFORM_CONTROLS_MODE', ['translate', 'rotate', 'scale'])
+    .add(config, 'TRANSFORM_CONTROLS_MODE', ['translate', 'rotate', 'scale'])
     .onChange((value) => {
-      CONFIG.TRANSFORM_CONTROLS_MODE = value;
+      config.TRANSFORM_CONTROLS_MODE = value;
     })
     .name('MODE')
     .listen();
-  transformControlsFolder.add(CONFIG, 'SNAP_TO_GRID').listen();
+  transformControlsFolder.add(config, 'SNAP_TO_GRID').listen();
   // LIGHTS SETTINGS
 
   const lightsFolder = gui.addFolder('Lights');
-  lightsFolder.add(CONFIG, 'LIGHTS_LIGHT_HELPERS_VISIBLE').name('HELPERS').listen();
+  lightsFolder.add(config, 'LIGHTS_LIGHT_HELPERS_VISIBLE').name('HELPERS').listen();
   const skyLightFolder = lightsFolder.addFolder('Sky Light');
-  skyLightFolder.add(CONFIG, 'LIGHTS_SKY_LIGHT_INTENSITY', 0, 2).name('INTENSITY').listen();
-  skyLightFolder.addColor(CONFIG, 'LIGHTS_SKY_LIGHT_COLOR').name('COLOR').listen();
-  skyLightFolder.addColor(CONFIG, 'LIGHTS_SKY_LIGHT_GROUND').name('GROUND').listen();
-  return () => gui.destroy();
-};
+  skyLightFolder.add(config, 'LIGHTS_SKY_LIGHT_INTENSITY', 0, 2).name('INTENSITY').listen();
+  skyLightFolder.addColor(config, 'LIGHTS_SKY_LIGHT_COLOR').name('COLOR').listen();
+  skyLightFolder.addColor(config, 'LIGHTS_SKY_LIGHT_GROUND').name('GROUND').listen();
+  let selectedObjectFolder;
+  const clearSelection = () => {
+    selectedObjectFolder?.destroy();
+    selectedObjectFolder = undefined;
+  };
 
-const addSelectedObject = (selectedObject) => {
-  const thrlender = ThrlenderEngine.getInstance();
-  logger.log(selectedObject, 'debug', 'blue', 'New selected object :');
-  const selectedObjectFolder = gui.addFolder('Selected Object');
-  const objPosition = selectedObjectFolder.addFolder('position');
-  objPosition.add(selectedObject.position, 'x').name('x').listen();
-  objPosition.add(selectedObject.position, 'y').name('y').listen();
-  objPosition.add(selectedObject.position, 'z').name('z').listen();
+  function showSelection(selectedObject) {
+    clearSelection();
+    if (!selectedObject) return;
 
-  //   CHECK OBJECT TYPE:
-  if (selectedObject instanceof THREE.Light) {
-    selectedObjectFolder.add(selectedObject, 'intensity', 0, 500).name('intensity').listen();
-    selectedObjectFolder.add(selectedObject, 'distance', 1, 150).name('distance').listen();
-    selectedObjectFolder.add(selectedObject, 'decay').name('decay').listen();
-    selectedObjectFolder.addColor(selectedObject, 'color').name('color').listen();
-    selectedObjectFolder.add(thrlender, 'removeSelectedObject')?.listen();
-    return;
+    logger.log(selectedObject, 'debug', 'blue', 'New selected object :');
+    selectedObjectFolder = gui.addFolder('Selected Object');
+    const position = selectedObjectFolder.addFolder('position');
+    for (const axis of ['x', 'y', 'z']) position.add(selectedObject.position, axis).listen();
+
+    if (selectedObject instanceof THREE.Light) {
+      selectedObjectFolder.add(selectedObject, 'intensity', 0, 500).listen();
+      if ('distance' in selectedObject) selectedObjectFolder.add(selectedObject, 'distance', 1, 150).listen();
+      if ('decay' in selectedObject) selectedObjectFolder.add(selectedObject, 'decay').listen();
+      selectedObjectFolder.addColor(selectedObject, 'color').listen();
+    } else {
+      for (const axis of ['x', 'y', 'z']) selectedObjectFolder.add(selectedObject.scale, axis).name('s' + axis).listen();
+      if (selectedObject.material?.color) selectedObjectFolder.addColor(selectedObject.material, 'color').listen();
+    }
+    selectedObjectFolder.add(thrlender, 'removeSelectedObject').listen();
   }
 
-  selectedObjectFolder.add(selectedObject.scale, 'x').name('sx').listen();
-  selectedObjectFolder.add(selectedObject.scale, 'y').name('sy').listen();
-  selectedObjectFolder.add(selectedObject.scale, 'z').name('sz').listen();
-  selectedObjectFolder.addColor(selectedObject.material, 'color').name('color').listen();
-  selectedObjectFolder.add(thrlender, 'removeSelectedObject')?.listen();
-  // ADD FUNCTION TO REMOVE OBJECT SELECTED OBJECT
+  thrlender.addEventListener('selection-cleared', clearSelection);
+  return {
+    showSelection,
+    dispose() {
+      if (mouseDrag) window.dispatchEvent(new MouseEvent('mouseup'));
+      if (touchDrag) window.dispatchEvent(new Event('touchend'));
+      dragEvents.abort();
+      thrlender.removeEventListener('selection-cleared', clearSelection);
+      gui.destroy();
+    },
+  };
 };
 
-export const DEBUG = {
-  init,
-  addSelectedObject,
-  removeSelectedObject: () => {
-    gui.folders.map((folder) => {
-      folder._title === 'Selected Object' && folder.destroy();
-    });
-  },
-};
+export const DEBUG = { init };
