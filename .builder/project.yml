@@ -1,0 +1,14 @@
+version: 1
+image: node:24-bookworm
+setup: [npm ci]
+verify:
+  build: npm run build
+egress_allow: [registry.npmjs.org]
+environments:
+  staging:
+    setup: [npm ci, npm run build]
+    start: npm exec -- vite preview --host "$HOST" --port "$PORT" --strictPort
+    port: 4173
+    ready: { http: /ThrlenderJS/ }
+    env: { NODE_ENV: production, SANDBOX_URL: "1" }
+capabilities_dir: docs/product/capabilities
