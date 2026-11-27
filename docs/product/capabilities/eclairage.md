@@ -9,4 +9,4 @@ La scène possède une lumière hémisphérique par défaut et accepte des sourc
 
 Les sources et leurs aides se trouvent dans la vue 3D. Le panneau Lights regroupe les réglages du ciel et la visibilité des aides.
 
-Code : [ThrlenderEngine.js](../../../src/ThrlenderEngine.js), [menu/menu.js](../../../src/menu/menu.js)
+Code : [ThrlenderEngine.js](../../../src/ThrlenderEngine.js), [Interface](../../../src/app/App.tsx)

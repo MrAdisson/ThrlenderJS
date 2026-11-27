@@ -1,21 +1,10 @@
 import { ThrlenderEngine } from '../ThrlenderEngine';
-import { DEBUG } from '../debug/debug';
 import { eventManager } from '../eventManager';
-import { MENU } from '../menu/menu';
 import { mouseManager } from '../mouseManager';
 import { getConfigCallbacks } from '../utils/config';
 
-interface EditorEngine {
-  init(host: HTMLElement): void;
-  resize(width: number, height: number): void;
-  update(): void;
-  render(): void;
-  dispose(): void;
-}
-
-export function mountEditor(host: HTMLElement): () => void {
-  const thrlender = new ThrlenderEngine();
-  const engine: EditorEngine = thrlender;
+export function mountEditor(host: HTMLElement, refresh: () => void) {
+  const engine = new ThrlenderEngine();
   const cleanup: (() => void)[] = [() => engine.dispose()];
 
   function dispose() {
@@ -24,11 +13,17 @@ export function mountEditor(host: HTMLElement): () => void {
 
   try {
     engine.init(host);
-    const debug = DEBUG.init(host, thrlender);
-    cleanup.push(debug.dispose);
-    cleanup.push(mouseManager.init(thrlender, debug));
-    cleanup.push(eventManager.init(thrlender));
-    cleanup.push(MENU.initMenu(host, thrlender));
+    cleanup.push(mouseManager.init(engine));
+    cleanup.push(eventManager.init(engine));
+    engine.addEventListener('selection-changed', refresh);
+    engine.addEventListener('scene-loaded', refresh);
+    const transformControls = engine.transformControls!;
+    transformControls.addEventListener('objectChange', refresh);
+    cleanup.push(() => {
+      engine.removeEventListener('selection-changed', refresh);
+      engine.removeEventListener('scene-loaded', refresh);
+      transformControls.removeEventListener('objectChange', refresh);
+    });
 
     function resize(width: number, height: number) {
       if (width > 0 && height > 0) engine.resize(width, height);
@@ -41,17 +36,22 @@ export function mountEditor(host: HTMLElement): () => void {
     observer.observe(host);
     cleanup.push(() => observer.disconnect());
 
-    const config = thrlender.config;
-    const configCallbacks: Record<keyof typeof config, () => void> = getConfigCallbacks(thrlender);
+    const config = engine.config;
+    const configCallbacks: Record<keyof typeof config, () => void> = getConfigCallbacks(engine);
     const configKeys = Object.keys(configCallbacks) as (keyof typeof config)[];
     const previousConfig = { ...config };
     let frameId: number;
 
     function animate() {
+      let configChanged = false;
       for (const key of configKeys) {
-        if (config[key] !== previousConfig[key]) configCallbacks[key]();
+        if (config[key] !== previousConfig[key]) {
+          configCallbacks[key]();
+          configChanged = true;
+        }
       }
       Object.assign(previousConfig, config);
+      if (configChanged) refresh();
       engine.update();
       engine.render();
       frameId = requestAnimationFrame(animate);
@@ -59,7 +59,7 @@ export function mountEditor(host: HTMLElement): () => void {
 
     frameId = requestAnimationFrame(animate);
     cleanup.push(() => cancelAnimationFrame(frameId));
-    return dispose;
+    return { engine, dispose };
   } catch (error) {
     dispose();
     throw error;

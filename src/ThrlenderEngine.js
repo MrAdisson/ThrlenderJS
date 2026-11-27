@@ -1,11 +1,19 @@
 import * as THREE from 'three';
-import { createConfig } from './utils/config';
+import { createConfig, getConfigCallbacks } from './utils/config';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
 // A scene can share geometries, materials and textures across several meshes.
-function disposeScene(scene) {
+function disposeScene(scene, retainedScene) {
+  const retained = retainedScene ? collectResources(retainedScene) : new Set();
+  for (const resource of collectResources(scene)) {
+    if (!retained.has(resource)) resource?.dispose();
+  }
+  scene.clear();
+}
+
+function collectResources(scene) {
   const resources = new Set();
   resources.add(scene.background?.isTexture ? scene.background : null);
   resources.add(scene.environment);
@@ -20,8 +28,7 @@ function disposeScene(scene) {
       }
     }
   });
-  for (const resource of resources) resource?.dispose();
-  scene.clear();
+  return resources;
 }
 
 export class ThrlenderEngine extends THREE.EventDispatcher {
@@ -29,6 +36,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   fileEvents = new AbortController();
   readers = new Set();
   objectUrls = new Set();
+  /** @type {THREE.Object3D | null} */
+  selectedObject = null;
 
   /** @param {HTMLElement} host */
   init(host) {
@@ -40,7 +49,6 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.initDefaultSkylight();
     this.initTransformControls();
     this.initAxesHelper();
-    this.selectedObject = null;
     host.appendChild(this.renderer.domElement);
   }
 
@@ -53,6 +61,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
     this.controls?.dispose();
     this.transformControls?.removeEventListener('dragging-changed', this.syncCameraControls);
+    this.transformControls?.removeEventListener('objectChange', this.updateSelectedHelper);
     this.transformControls?.detach();
     this.transformControls?.removeFromParent();
     this.transformControls?.dispose();
@@ -74,6 +83,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
   initRenderer() {
     this.renderer = new THREE.WebGLRenderer();
+    this.renderer.domElement.tabIndex = 0;
+    this.renderer.domElement.setAttribute('aria-label', '3D viewport');
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
   }
@@ -91,12 +102,33 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     );
     this.skyLight.position.set(0, 20, 0);
     this.skyLight.name = 'ThrlenderSkyLight';
-    // ADD HELPER TO LIGHTS:
-    const lightHelper = new THREE.PointLightHelper(this.skyLight, 1);
-    lightHelper.name = 'ThrlenderSkyLightHelper';
-    this.scene.add(lightHelper);
     this.scene.add(this.skyLight);
+    this.addLightHelper(this.skyLight);
   }
+
+  /** @param {THREE.Light} light */
+  addLightHelper(light) {
+    let helper;
+    if (light instanceof THREE.SpotLight) helper = new THREE.SpotLightHelper(light);
+    if (light instanceof THREE.DirectionalLight) helper = new THREE.DirectionalLightHelper(light);
+    if (light instanceof THREE.PointLight || light instanceof THREE.HemisphereLight) {
+      helper = new THREE.PointLightHelper(light, 1);
+    }
+    if (!helper) return;
+    helper.name = light.name + 'Helper';
+    helper.visible = this.config.LIGHTS_LIGHT_HELPERS_VISIBLE;
+    this.scene.add(helper);
+  }
+
+  updateSelectedHelper = () => {
+    const object = this.selectedObject;
+    if (!object?.isLight) return;
+    object.updateMatrixWorld();
+    for (const helper of this.scene.children) {
+      if (helper.light === object) helper.update();
+    }
+  };
+
   initGrid() {
     this.gridHelper = new THREE.GridHelper(100, 100, this.config.GRID_COLOR, this.config.GRID_COLOR);
     this.gridHelper.visible = this.config.GRID_VISIBLE;
@@ -108,6 +140,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.transformControls = new TransformControls(this.camera, this.renderer.domElement);
     this.transformControls.name = 'ThrlenderTransformControls';
     this.transformControls.addEventListener('dragging-changed', this.syncCameraControls);
+    this.transformControls.addEventListener('objectChange', this.updateSelectedHelper);
     // DEFAULT SNAP TO GRID
     if (this.config.SNAP_TO_GRID) {
       this.transformControls.setTranslationSnap(1);
@@ -197,40 +230,61 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.readLocalFile('.thrl', (reader, file) => reader.readAsText(file), (contents) => {
       const scene = new THREE.ObjectLoader().parse(JSON.parse(contents));
       this.setSelectedObject(null);
-      this.dispatchEvent({ type: 'selection-cleared' });
       this.transformControls.removeFromParent();
       disposeScene(this.scene);
 
       this.scene = scene;
+      const lights = scene.children.filter((child) => child.isLight);
+      const helperNames = new Set(lights.map((light) => light.name + 'Helper'));
+      // Older THRL files can contain serialized helper placeholders.
       for (const child of [...scene.children]) {
-        if (!child.isLight) continue;
-        const helper = new THREE.PointLightHelper(child, 1);
-        helper.name = child.name + 'Helper';
-        scene.add(helper);
+        if (child.type === 'Object3D' && helperNames.has(child.name)) child.removeFromParent();
       }
+      for (const light of lights) this.addLightHelper(light);
       this.initGrid();
       this.initAxesHelper();
       scene.add(this.transformControls);
-      this.skyLight = scene.getObjectByName('ThrlenderSkyLight');
+      const skyLight = scene.getObjectByName('ThrlenderSkyLight');
+      this.skyLight = skyLight instanceof THREE.HemisphereLight ? skyLight : undefined;
+      if (this.skyLight) {
+        this.config.LIGHTS_SKY_LIGHT_INTENSITY = this.skyLight.intensity;
+        this.config.LIGHTS_SKY_LIGHT_COLOR = '#' + this.skyLight.color.getHexString();
+        this.config.LIGHTS_SKY_LIGHT_GROUND = '#' + this.skyLight.groundColor.getHexString();
+      }
+      getConfigCallbacks(this).WIREFRAME_MODE();
+      this.dispatchEvent({ type: 'scene-loaded' });
     });
   }
 
+  /** @param {THREE.Object3D} object */
+  addObject(object) {
+    this.scene.add(object);
+    if (object instanceof THREE.Light) this.addLightHelper(object);
+    this.setSelectedObject(object);
+  }
+
   setSelectedObject(object) {
-    this.selectedObject = object ?? null;
-    if (object) this.transformControls.attach(object);
+    const selection = object?.light ?? object ?? null;
+    if (selection === this.selectedObject) return;
+    this.selectedObject = selection;
+    if (selection) this.transformControls.attach(selection);
     else this.transformControls.detach();
+    this.dispatchEvent({ type: 'selection-changed' });
   }
 
   removeSelectedObject() {
     const object = this.selectedObject;
     if (!object) return;
 
-    this.transformControls.detach();
-    this.scene.remove(object);
-    object.material.dispose();
-    object.geometry.dispose();
-    this.selectedObject = null;
-    this.dispatchEvent({ type: 'selection-cleared' });
+    this.setSelectedObject(null);
+    object.removeFromParent();
+    for (const helper of [...this.scene.children]) {
+      if (helper.light !== object) continue;
+      helper.removeFromParent();
+      helper.dispose();
+    }
+    if (object === this.skyLight) this.skyLight = undefined;
+    disposeScene(object, this.scene);
   }
 
   loadFbx() {
@@ -254,6 +308,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
         const object = new FBXLoader(manager).parse(contents, '');
         object.name = 'FBX_Object';
         this.scene.add(object);
+        getConfigCallbacks(this).WIREFRAME_MODE();
       } catch (error) {
         releaseTextures();
         throw error;

@@ -1,3 +1,4 @@
+import { Color } from 'three';
 import { logger } from './logger';
 
 export const createConfig = () => ({
@@ -34,11 +35,11 @@ export const getConfigCallbacks = (thrlender) => {
   const config = thrlender.config;
   return {
     WIREFRAME_MODE: () => {
-      thrlender?.scene?.children?.forEach((obj) => {
-        if (!obj?.material) return;
-        if (obj?.type?.includes('Light')) return;
-        if (obj?.type?.includes('Helper')) return;
-        obj.material.wireframe = config.WIREFRAME_MODE;
+      thrlender.scene.traverse((object) => {
+        if (!object.isMesh) return;
+        for (const material of [].concat(object.material ?? [])) {
+          if ('wireframe' in material) material.wireframe = config.WIREFRAME_MODE;
+        }
       });
       logger.log('WIREFRAME_MODE : ' + config.WIREFRAME_MODE, 'SETTINGS', 'grey');
     },
@@ -47,7 +48,10 @@ export const getConfigCallbacks = (thrlender) => {
       logger.log('GRID_VISIBLE : ' + config.GRID_VISIBLE, 'SETTINGS', 'grey');
     },
     GRID_COLOR: () => {
-      thrlender.gridHelper.material.color.set(config.GRID_COLOR);
+      const color = new Color(config.GRID_COLOR);
+      const attribute = thrlender.gridHelper.geometry.getAttribute('color');
+      for (let i = 0; i < attribute.count; i++) attribute.setXYZ(i, color.r, color.g, color.b);
+      attribute.needsUpdate = true;
       logger.log('GRID_COLOR : ' + config.GRID_COLOR, 'SETTINGS', 'grey');
     },
     AXES_HELPER: () => {

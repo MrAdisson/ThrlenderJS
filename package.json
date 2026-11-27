@@ -14,7 +14,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "lil-gui": "^0.19.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.159.0",
