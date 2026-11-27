@@ -52,6 +52,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.objectUrls.clear();
 
     this.controls?.dispose();
+    this.transformControls?.removeEventListener('dragging-changed', this.syncCameraControls);
     this.transformControls?.detach();
     this.transformControls?.removeFromParent();
     this.transformControls?.dispose();
@@ -106,6 +107,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   initTransformControls() {
     this.transformControls = new TransformControls(this.camera, this.renderer.domElement);
     this.transformControls.name = 'ThrlenderTransformControls';
+    this.transformControls.addEventListener('dragging-changed', this.syncCameraControls);
     // DEFAULT SNAP TO GRID
     if (this.config.SNAP_TO_GRID) {
       this.transformControls.setTranslationSnap(1);
@@ -130,9 +132,9 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.controls.update();
   }
 
-  syncCameraControls() {
-    this.controls.enabled = !this.transformControls.dragging;
-  }
+  syncCameraControls = ({ value: dragging }) => {
+    this.controls.enabled = !dragging;
+  };
 
   /**
    * @param {number} width

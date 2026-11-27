@@ -11,7 +11,6 @@ interface EditorEngine {
   update(): void;
   render(): void;
   dispose(): void;
-  syncCameraControls(): void;
 }
 
 export function mountEditor(host: HTMLElement): () => void {
@@ -53,7 +52,6 @@ export function mountEditor(host: HTMLElement): () => void {
         if (config[key] !== previousConfig[key]) configCallbacks[key]();
       }
       Object.assign(previousConfig, config);
-      engine.syncCameraControls();
       engine.update();
       engine.render();
       frameId = requestAnimationFrame(animate);
