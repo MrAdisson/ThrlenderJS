@@ -56,7 +56,8 @@ async function openEditor(t) {
 
 test('App cleans up on StrictMode and remount, and follows the editor container', async (t) => {
   const page = await openEditor(t);
-  assert.equal(await page.locator('.editor-host > canvas, .editor-host > #menu, .editor-host > .editor-settings').count(), 3);
+  assert.equal(await page.locator('.editor-host > canvas, .add-panel, .properties-panel').count(), 3);
+  assert.equal(await page.locator('#menu, .lil-gui').count(), 0);
   await page.evaluate(() => Object.assign(document.querySelector('.editor-host').style, {
     width: '640px', height: '350px', margin: '90px 0 0 120px',
   }));
@@ -65,35 +66,28 @@ test('App cleans up on StrictMode and remount, and follows the editor container'
     return engine.camera.aspect === 640 / 350 && engine.renderer.domElement.width === 640 &&
       engine.renderer.domElement.height === 350;
   });
-  await page.getByRole('button', { name: 'ADD', exact: true }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.mouse.click(130, 425);
   await page.waitForFunction(() => window.current().selectedObject === null);
-  await page.mouse.click(440, 265);
+  await page.mouse.click(440, 323);
   await page.waitForFunction(() => window.current().selectedObject?.name === 'cube');
-  await page.mouse.move(470, 265);
+  assert.equal(await page.locator('.selection-name').innerText(), 'Cube');
+  await page.mouse.move(470, 323);
   await page.mouse.down();
   await page.waitForFunction(() => window.current().transformControls.dragging && !window.current().controls.enabled);
-  await page.mouse.move(525, 265, { steps: 4 });
+  await page.mouse.move(525, 323, { steps: 4 });
   await page.mouse.up();
   await page.waitForFunction(() => window.current().selectedObject.position.x > 0 && window.current().controls.enabled);
+  await page.waitForFunction(() => Number(document.querySelector('[aria-label="Position X"]').value) > 0);
   await page.keyboard.press('f');
   assert.equal(await page.evaluate(() => window.current().controls.target.x === window.current().selectedObject.position.x), true);
 
-  await page.getByRole('button', { name: 'HIDE MENU' }).click();
-  const showButton = await page.getByRole('button', { name: 'SHOW MENU' }).elementHandle();
-  const hiddenMenu = await page.locator('#menu').elementHandle();
-  const slider = page.locator('.editor-settings .controller').filter({ hasText: /^INTENSITY$/ }).locator('.slider');
-  const sliderBounds = await slider.boundingBox();
-  await page.mouse.move(sliderBounds.x + sliderBounds.width / 2, sliderBounds.y + sliderBounds.height / 2);
-  await page.mouse.down();
-  const intensity = await page.evaluate(() => window.current().config.LIGHTS_SKY_LIGHT_INTENSITY);
+  await page.getByRole('button', { name: 'Hide', exact: true }).click();
+  assert.equal(await page.getByLabel('Item type').isVisible(), false);
+  await page.getByRole('button', { name: 'Show', exact: true }).press('Enter');
+  assert.equal(await page.getByLabel('Item type').isVisible(), true);
   await page.evaluate(() => window.unmountEditor());
-  await page.mouse.move(0, 0);
-  await page.mouse.up();
-  assert.equal(await page.evaluate(() => window.current().config.LIGHTS_SKY_LIGHT_INTENSITY), intensity);
-  await showButton.evaluate((button) => button.click());
-  assert.equal(await hiddenMenu.evaluate((menu) => menu.style.display), 'none');
-  assert.equal(await page.locator('canvas, #menu, .editor-settings').count(), 0);
+  assert.equal(await page.locator('canvas, .add-panel, .properties-panel').count(), 0);
   const frames = await page.evaluate(() => window.engines.map((record) => record.frames));
   await page.keyboard.press('g');
   assert.deepEqual(await page.evaluate(() => window.engines.map(({ engine, geometryDisposals }) => [
@@ -102,18 +96,18 @@ test('App cleans up on StrictMode and remount, and follows the editor container'
   await page.evaluate(() => window.mountEditor());
   await page.waitForFunction(() => window.engines.length === 4 && window.engines[3].frames > 0);
   assert.deepEqual(await page.evaluate(() => window.engines.slice(0, 2).map(({ frames }) => frames)), frames);
-  await page.keyboard.press('g');
+  await page.locator('canvas').press('g');
   await page.waitForFunction(() => !window.current().gridHelper.visible);
-  await page.getByRole('button', { name: 'ADD', exact: true }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   assert.equal(await page.evaluate(() => window.current().transformControls.object.name), 'cube');
 });
 
 test('editor commands preserve camera, selection, shapes, lights and local files', async (t) => {
   const page = await openEditor(t);
-  const add = page.getByRole('button', { name: 'ADD', exact: true });
+  const add = page.getByRole('button', { name: 'Add', exact: true });
   const types = ['cube', 'sphere', 'cylinder', 'cone', 'plane', 'pointLight', 'spotLight', 'directionalLight', 'ambientLight'];
   for (const type of types) {
-    await page.locator('#menu select').selectOption(type);
+    await page.getByLabel('Item type').selectOption(type);
     await add.click();
     assert.equal(await page.evaluate(() => window.current().transformControls.object.name), type);
     if (type === 'pointLight') {
@@ -121,11 +115,12 @@ test('editor commands preserve camera, selection, shapes, lights and local files
       const light = await page.evaluate(() => {
         const editor = window.current();
         const { x, y } = editor.scene.getObjectByName('pointLight').position.clone().project(editor.camera);
-        return { x: (x + 1) * 500, y: (1 - y) * 400 };
+        const bounds = editor.renderer.domElement.getBoundingClientRect();
+        return { x: bounds.left + (x + 1) * bounds.width / 2, y: bounds.top + (1 - y) * bounds.height / 2 };
       });
       await page.mouse.click(light.x, light.y);
       await page.waitForFunction(() => window.current().selectedObject?.name === 'pointLight');
-      const intensity = page.locator('.controller').filter({ hasText: /^intensity$/ }).locator('input');
+      const intensity = page.getByLabel('Intensity', { exact: true });
       await intensity.fill('60');
       assert.equal(await page.evaluate(() => window.current().selectedObject.intensity), 60);
     }
@@ -134,10 +129,14 @@ test('editor commands preserve camera, selection, shapes, lights and local files
   await page.mouse.click(210, 720);
   await page.waitForFunction(() => window.current().selectedObject === null);
   await page.keyboard.press('Tab');
-  assert.equal(await page.evaluate(() => window.current().selectedObject?.name), 'ThrlenderSkyLightHelper');
+  assert.equal(await page.evaluate(() => window.current().selectedObject?.name), 'ThrlenderSkyLight');
+  assert.equal(await page.locator('.selection-name').innerText(), 'Sky light');
+  await page.locator('canvas').focus();
   for (const [key, mode] of [['r', 'rotate'], ['s', 'scale'], ['t', 'translate']]) {
     await page.keyboard.press(key);
     await page.waitForFunction((mode) => window.current().transformControls.mode === mode, mode);
+    const label = { rotate: 'Rotate R', scale: 'Scale S', translate: 'Move T' }[mode];
+    await page.getByRole('button', { name: label, pressed: true }).waitFor();
   }
   await page.keyboard.press('Space');
   await page.waitForFunction(() => !window.current().transformControls.enabled);
@@ -160,11 +159,12 @@ test('editor commands preserve camera, selection, shapes, lights and local files
     await (await chooserPromise).setFiles(file);
   }
 
-  await upload('loadFbx', resolve('tests/fixtures/triangle.fbx'));
+  await page.getByText('File', { exact: true }).click();
+  await upload('Import FBX', resolve('tests/fixtures/triangle.fbx'));
   await page.waitForFunction(() => window.current().scene.getObjectByName('FBX_Object')?.getObjectByName('Triangle')?.isMesh);
 
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save THRL', exact: true }).click();
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), 'scene.thrl');
   const saved = JSON.parse(await readFile(await download.path(), 'utf8'));
@@ -175,10 +175,9 @@ test('editor commands preserve camera, selection, shapes, lights and local files
   }
   assert.equal(await page.evaluate(() => window.current().gridHelper.parent === window.current().scene), true);
 
-  await page.mouse.click(210, 720);
-  await page.keyboard.press('r');
+  await page.locator('canvas').press('r');
   await page.waitForFunction(() => window.current().transformControls.mode === 'rotate');
-  await upload('load', {
+  await upload('Open THRL', {
     name: 'replacement.thrl',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({
@@ -195,7 +194,84 @@ test('editor commands preserve camera, selection, shapes, lights and local files
       editor.scene.getObjectByName('ThrlenderGridHelper') === editor.gridHelper,
     ];
   }), [true, false, 'rotate', true, null, true]);
+  assert.equal(await page.locator('.selection-name').count(), 0);
+  assert.equal(await page.evaluate(() => window.current().transformControls.object === undefined), true);
   await page.mouse.click(210, 720);
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => window.current().selectedObject?.name), 'cube');
+  await page.getByRole('button', { name: 'Delete selection' }).click();
+  await upload('Import FBX', resolve('tests/fixtures/triangle.fbx'));
+  await page.waitForFunction(() => window.current().scene.getObjectByName('FBX_Object'));
+  await page.locator('canvas').press('Tab');
+  assert.equal(await page.locator('.selection-name').innerText(), 'FBX_Object');
+  assert.equal(await page.getByLabel('Position X').inputValue(), '0');
+  assert.equal(await page.getByLabel('Scale X').inputValue(), '1');
+  assert.equal(await page.getByLabel('Color', { exact: true }).count(), 0);
+});
+
+test('properties and scene settings stay synchronized without capturing interface keys', async (t) => {
+  const page = await openEditor(t);
+  await page.getByLabel('Add color').fill('#4a86d2');
+  await page.getByRole('button', { name: 'Add', exact: true }).press('Enter');
+  assert.equal(await page.locator('.selection-name').innerText(), 'Cube');
+  assert.equal(await page.getByLabel('Color', { exact: true }).inputValue(), '#4a86d2');
+  const position = page.getByLabel('Position X');
+  await position.fill('2.5');
+  await position.press('r');
+  await position.press('Tab');
+  assert.equal(await page.getByLabel('Position Y').evaluate((input) => input === document.activeElement), true);
+  assert.equal(await page.getByLabel('Position Y').evaluate((input) => input.matches(':focus-visible')), true);
+  assert.equal(await page.getByRole('button', { name: 'Move T' }).getAttribute('aria-pressed'), 'true');
+  await page.getByLabel('Scale Z').fill('1.75');
+  await page.getByLabel('Color', { exact: true }).fill('#afff11');
+  assert.deepEqual(await page.evaluate(() => {
+    const { position, scale, material } = window.current().selectedObject;
+    return [position.x, scale.z, material.color.getHexString()];
+  }), [2.5, 1.75, 'afff11']);
+  await page.getByRole('button', { name: 'Delete selection' }).click();
+  assert.equal(await page.locator('.selection-name').count(), 0);
+
+  await page.getByText('Lighting', { exact: true }).press('Enter');
+  await page.getByLabel('Show light helpers').uncheck();
+  await page.getByLabel('Sky intensity').press('End');
+  await page.getByLabel('Sky color').fill('#dfe7ff');
+  await page.getByLabel('Ground color').fill('#334455');
+  await page.waitForFunction(() => {
+    const { skyLight, scene } = window.current();
+    return skyLight.intensity === 2 && skyLight.color.getHexString() === 'dfe7ff' &&
+      skyLight.groundColor.getHexString() === '334455' && !scene.getObjectByName('ThrlenderSkyLightHelper').visible;
+  });
+  await page.getByText('Lighting', { exact: true }).press('Enter');
+
+  await page.getByLabel('Item type').selectOption('spotLight');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByLabel('Distance', { exact: true }).fill('65');
+  await page.getByLabel('Decay', { exact: true }).fill('1.5');
+  assert.deepEqual(await page.evaluate(() => {
+    const { selectedObject, scene } = window.current();
+    return [selectedObject.distance, selectedObject.decay, scene.getObjectByName('spotLightHelper').visible];
+  }), [65, 1.5, false]);
+  await page.getByRole('button', { name: 'Delete selection' }).click();
+  assert.equal(await page.evaluate(() => !!window.current().scene.getObjectByName('spotLightHelper')), false);
+  await page.getByLabel('Item type').selectOption('ambientLight');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  assert.equal(await page.getByLabel('Distance', { exact: true }).count(), 0);
+  assert.equal(await page.getByLabel('Decay', { exact: true }).count(), 0);
+
+  await page.getByText('View', { exact: true }).press('Enter');
+  await page.getByLabel('Grid color').fill('#4288dd');
+  await page.getByLabel('Camera damping').uncheck();
+  await page.locator('canvas').press('g');
+  await page.locator('canvas').press('a');
+  await page.locator('canvas').press('w');
+  await page.waitForFunction(() => {
+    const { gridHelper, axesHelper, controls, config } = window.current();
+    return !gridHelper.visible && !axesHelper.visible && !controls.enableDamping && config.WIREFRAME_MODE &&
+      gridHelper.geometry.getAttribute('color').getX(0) < 0.06;
+  });
+  assert.equal(await page.getByLabel('Show grid').isChecked(), false);
+  assert.equal(await page.getByLabel('Show axes').isChecked(), false);
+  await page.getByRole('checkbox', { name: 'Wireframe', checked: true }).waitFor();
+  await page.getByLabel('Snap').uncheck();
+  await page.waitForFunction(() => window.current().transformControls.translationSnap === null);
 });
