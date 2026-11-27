@@ -3,6 +3,7 @@ image: node:24-bookworm
 setup: [npm ci]
 verify:
   build: npm run build
+  typecheck: npm run typecheck
 egress_allow: [registry.npmjs.org]
 environments:
   staging:

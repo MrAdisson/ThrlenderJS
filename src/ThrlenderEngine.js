@@ -15,33 +15,35 @@ export class ThrlenderEngine {
     return ThrlenderEngine.instance;
   }
 
-  init() {
-    if (!this.scene) {
-      // INIT SCENE
-      this.initScene();
-      // INIT CAMERA
-      this.initCamera();
-      // INIT RENDERER
-      this.initRenderer();
-      // INIT CONTROLS
-      this.initControls();
-      // INIT GRID
-      this.initGrid();
-      // INIT SKY LIGHT:
-      this.initDefaultSkylight();
-      // INIT TRANSFORM CONTROLS
-      this.initTransformControls();
-      //  INIT AXES HELPER
-      this.initAxesHelper();
-      this.selectedObject = null;
-      // ADD SCENE TO DOM
-    } else {
-      this.initGrid();
-      this.initAxesHelper();
-      this.initTransformControls();
-      this.skyLight = this.scene.getObjectByName('ThrlenderSkyLight');
+  /** @param {HTMLElement} host */
+  init(host) {
+    this.initScene();
+    this.initCamera();
+    this.initRenderer();
+    this.initControls();
+    this.initGrid();
+    this.initDefaultSkylight();
+    this.initTransformControls();
+    this.initAxesHelper();
+    this.selectedObject = null;
+    host.appendChild(this.renderer.domElement);
+  }
+
+  dispose() {
+    this.controls.dispose();
+    this.transformControls.dispose();
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
+    if (ThrlenderEngine.instance === this) {
+      ThrlenderEngine.instance = undefined;
     }
-    document.body.appendChild(this.renderer.domElement);
+  }
+
+  initLoadedScene() {
+    this.initGrid();
+    this.initAxesHelper();
+    this.initTransformControls();
+    this.skyLight = this.scene.getObjectByName('ThrlenderSkyLight');
   }
 
   initScene() {
@@ -114,6 +116,10 @@ export class ThrlenderEngine {
     this.controls.update();
   }
 
+  syncCameraControls() {
+    this.controls.enabled = !this.transformControls.dragging;
+  }
+
   resize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
@@ -155,6 +161,7 @@ export class ThrlenderEngine {
       const reader = new FileReader();
       reader.readAsText(event.target.files[0]);
       reader.onload = (event) => {
+        if (ThrlenderEngine.getInstance() !== this) return;
         const jsonScene = JSON.parse(event.target.result);
         const loader = new THREE.ObjectLoader();
         this.transformControls.detach();
@@ -172,7 +179,8 @@ export class ThrlenderEngine {
             this.scene.add(lightHelper);
           }
         });
-        this.init();
+        this.transformControls.dispose();
+        this.initLoadedScene();
       };
     };
     input.click();
@@ -202,6 +210,7 @@ export class ThrlenderEngine {
       const reader = new FileReader();
       reader.readAsArrayBuffer(event.target.files[0]);
       reader.onload = (event) => {
+        if (ThrlenderEngine.getInstance() !== this) return;
         console.log(event);
         const contents = event.target.result;
         const loader = new FBXLoader();

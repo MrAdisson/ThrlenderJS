@@ -44,7 +44,10 @@ const init = () => {
   };
   window.addEventListener('mousemove', onMouseMove, false);
   window.addEventListener('mousedown', onMouseClick, false);
-  // window.addEventListener('click', onMouseClick, false);
+  return () => {
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mousedown', onMouseClick);
+  };
 };
 
 export const mouseManager = {

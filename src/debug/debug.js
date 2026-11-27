@@ -4,9 +4,10 @@ import { CONFIG } from '../utils/config';
 import { logger } from '../utils/logger';
 import { ThrlenderEngine } from '../ThrlenderEngine';
 
-const gui = new GUI();
+let gui;
 
 const init = () => {
+  gui = new GUI();
   const thrlender = ThrlenderEngine.getInstance();
   //GLOBAL SETTINGS
   gui.add(CONFIG, 'WIREFRAME_MODE').listen();
@@ -42,6 +43,7 @@ const init = () => {
   skyLightFolder.add(CONFIG, 'LIGHTS_SKY_LIGHT_INTENSITY', 0, 2).name('INTENSITY').listen();
   skyLightFolder.addColor(CONFIG, 'LIGHTS_SKY_LIGHT_COLOR').name('COLOR').listen();
   skyLightFolder.addColor(CONFIG, 'LIGHTS_SKY_LIGHT_GROUND').name('GROUND').listen();
+  return () => gui.destroy();
 };
 
 const addSelectedObject = (selectedObject) => {
