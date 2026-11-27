@@ -2,8 +2,7 @@
 id: CAP-OBJETS-PROPRIETES
 title: "Modifier les propriétés de la sélection"
 parent: CAP-OBJETS
+deprecated: false
 ---
 
-Le panneau ouvert par un clic sur un objet permet de modifier sa position, son échelle et sa couleur. Pour une lumière, il propose la position, l’intensité, la couleur et, selon les propriétés disponibles sur le type, la distance et l’atténuation. Le panneau des objets suppose un matériau doté d’une couleur.
-
-Code : [debug/debug.js](../../../src/debug/debug.js), [mouseManager.js](../../../src/mouseManager.js)
+Le panneau **Properties** suit la sélection après un clic, un ajout ou une sélection au clavier. Il affiche la position et, pour les éléments autres que les lumières, l’échelle. La couleur est modifiable sur une lumière ou un maillage doté d’un matériau unique avec une couleur. Les lumières proposent l’intensité. Les lumières ponctuelles et spot proposent aussi **Distance** et **Decay**. Les valeurs suivent le mouvement du manipulateur. Le panneau affiche une invite lorsque la sélection est vide.

@@ -2,8 +2,7 @@
 id: CAP-ECLAIRAGE-CIEL
 title: "Régler la lumière du ciel"
 parent: CAP-ECLAIRAGE
+deprecated: false
 ---
 
-Le panneau Sky Light règle l’intensité entre 0 et 2 ainsi que les couleurs du ciel et du sol. Il cible la lumière hémisphérique intégrée, identifiée par son nom lors du chargement d’une scène.
-
-Code : [debug/debug.js](../../../src/debug/debug.js), [utils/config.js](../../../src/utils/config.js), [ThrlenderEngine.js](../../../src/ThrlenderEngine.js)
+Dans **Lighting**, **Sky intensity** règle l’intensité de la lumière du ciel de 0 à 2. **Sky color** et **Ground color** règlent ses deux couleurs. Les champs sont disponibles lorsque la scène contient la lumière du ciel intégrée.

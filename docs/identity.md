@@ -3,15 +3,17 @@
 <!-- builder:tone -->
 ## Ton et langue
 
-La page déclare l’anglais. Les libellés sont brefs et orientés commande, comme ADD et HIDE MENU. Le panneau combine des intitulés en anglais et des noms de réglages techniques. [Page HTML](../src/index.html) · [Menu](../src/menu/menu.js) · [Panneau](../src/debug/debug.js)
+L’interface utilise des libellés courts en anglais, comme **Add**, **Move** et **Save THRL**. [Interface](../src/app/App.tsx)
 
 <!-- builder:visual-identity -->
 ## Identité visuelle
 
-Le canevas 3D remplit la fenêtre. Le menu d’ajout sombre se superpose en haut à gauche et le panneau lil-gui présente les réglages. La grille grise et les axes sont visibles au démarrage. [Styles](../src/index.css) · [Menu](../src/menu/menu.js) · [Réglages](../src/utils/config.js)
+Le canevas 3D occupe l’espace sous la barre de commandes. Deux panneaux sombres présentent l’ajout et les propriétés. La grille grise et les axes sont visibles au démarrage. [Styles](../src/index.css)
 
 <!-- builder:accessibility -->
 ## Accessibilité visée
+
+Les commandes sont accessibles au clavier et montrent le focus. Les raccourcis de scène s’activent lorsque la vue 3D a le focus.
 
 <!-- builder:constraints -->
 ## Contraintes légales et métier

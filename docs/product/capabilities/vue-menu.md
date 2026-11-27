@@ -2,8 +2,7 @@
 id: CAP-VUE-MENU
 title: "Masquer et réafficher le menu d’ajout"
 parent: CAP-VUE
+deprecated: false
 ---
 
-HIDE MENU réduit les commandes d’ajout au bouton SHOW MENU, qui les réaffiche. Le panneau de réglages reste indépendant.
-
-Code : [menu/menu.js](../../../src/menu/menu.js)
+Dans **Add to scene**, **Hide** replie les commandes d’ajout et **Show** les réaffiche. Les autres commandes restent accessibles.

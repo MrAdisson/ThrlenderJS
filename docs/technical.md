@@ -3,7 +3,7 @@
 <!-- builder:stack -->
 ## Stack et raisons
 
-React monte l’application, qui utilise TypeScript pour son point d’entrée et son raccordement à l’éditeur. Le moteur existant utilise JavaScript et Three.js 0.159 pour l’édition et le rendu WebGL. lil-gui construit le panneau de réglages. Vite sert les modules en développement et compile les fichiers statiques. npm et le verrou de dépendances définissent l’installation. [README](../README.md) · [Manifeste](../package.json)
+React et TypeScript portent l’interface d’édition. Le moteur existant utilise JavaScript et Three.js 0.159 pour l’édition et le rendu WebGL. Vite sert les modules en développement et compile les fichiers statiques. npm et le verrou de dépendances définissent l’installation. [README](../README.md) · [Manifeste](../package.json)
 
 <!-- builder:architecture -->
 ## Architecture
@@ -23,12 +23,12 @@ Le README indique npm run dev pour le développement. npm run build produit dist
 <!-- builder:conventions -->
 ## Conventions
 
-Le code se trouve sous `src`. Les modules React et leur raccordement à l’éditeur utilisent TypeScript en mode strict. Le moteur, les menus et les gestionnaires historiques restent en JavaScript. La configuration Prettier définit une indentation de deux espaces, des apostrophes, des points-virgules et une largeur de 120. La scène nomme les éléments utiles à la sélection et à la reconstruction des repères. [Prettier](../.prettierrc) · [Configuration de la scène](../src/utils/config.js)
+Le code se trouve sous `src`. Les modules React et leur raccordement à l’éditeur utilisent TypeScript en mode strict. Le moteur et les gestionnaires de la vue restent en JavaScript. La configuration Prettier définit une indentation de deux espaces, des apostrophes, des points-virgules et une largeur de 120. La scène nomme les éléments utiles à la sélection et à la reconstruction des repères. [Prettier](../.prettierrc) · [Configuration de la scène](../src/utils/config.js)
 
 <!-- builder:quality -->
 ## Qualité
 
-Les commandes `npm run build` et `npm run deploy` vérifient les types avec `npm run typecheck` avant de compiler. App Builder exécute aussi la vérification des types. `npm test` vérifie les chemins de sortie et les URL des ressources des deux bundles, sans écrire dans leurs répertoires de déploiement. Playwright Core exécute aussi les tests de l’éditeur dans Chromium, avec `CHROME_PATH` ou un Chromium déjà installé pour Playwright. [Manifeste](../package.json) · [Workflow](../.github/workflows/static.yml)
+Les commandes `npm run build` et `npm run deploy` vérifient les types avec `npm run typecheck` avant de compiler. App Builder exécute aussi la vérification des types. `npm test` vérifie les chemins de sortie et les URL des ressources des deux bundles, et le comportement de l’éditeur dans Chromium. Playwright Core exécute aussi les tests de l’éditeur dans Chromium, avec `CHROME_PATH` ou un Chromium déjà installé pour Playwright. [Manifeste](../package.json) · [Workflow](../.github/workflows/static.yml)
 
 <!-- builder:security -->
 ## Sécurité et données personnelles
