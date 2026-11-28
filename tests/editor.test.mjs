@@ -230,6 +230,8 @@ test('editor commands preserve camera, selection, shapes, lights and local files
   await page.locator('canvas').press('Tab');
   assert.equal(await page.locator('.selection-name').innerText(), 'Sky light');
   await deleteSelection(page);
+  await menu(page, 'Scene Settings').click();
+  assert.equal(await page.getByText('This scene has no built-in sky light.').isVisible(), true);
   await upload(page, 'Import FBX', resolve('tests/fixtures/triangle.fbx'));
   await page.waitForFunction(() => window.current().scene.getObjectByName('FBX_Object'));
   await page.getByRole('status').getByText('Unsaved changes').waitFor();
@@ -264,6 +266,9 @@ test('properties and scene settings stay synchronized without capturing interfac
 
   await menu(page, 'View').press('Enter');
   await page.getByLabel('Show light helpers').uncheck();
+  assert.equal(await page.getByLabel('Sky intensity').isVisible(), false);
+  await menu(page, 'Scene Settings').press('Enter');
+  assert.equal(await page.getByLabel('Show grid').isVisible(), false);
   await page.getByLabel('Sky intensity').press('End');
   await page.getByLabel('Sky color').fill('#dfe7ff');
   await page.getByLabel('Ground color').fill('#334455');
@@ -272,9 +277,16 @@ test('properties and scene settings stay synchronized without capturing interfac
     return skyLight.intensity === 2 && skyLight.color.getHexString() === 'dfe7ff' &&
       skyLight.groundColor.getHexString() === '334455' && !scene.getObjectByName('ThrlenderSkyLightHelper').visible;
   });
-  await menu(page, 'View').press('Enter');
+  await menu(page, 'Scene Settings').press('Enter');
 
+  const tree = page.getByRole('region', { name: 'Scene' });
+  await tree.getByRole('button', { name: 'Sky light', exact: true }).click();
+  assert.equal(await page.getByLabel('Intensity', { exact: true }).count(), 0);
   await addItem(page, 'spotLight');
+  const inspector = page.getByRole('complementary', { name: 'Inspector' });
+  assert.equal(await inspector.getByRole('group', { name: 'Light' }).isVisible(), true);
+  assert.equal(await inspector.getByRole('group', { name: 'Material' }).count(), 0);
+  assert.equal(await inspector.getByLabel('Scale X').count(), 0);
   await page.getByLabel('Distance', { exact: true }).fill('65');
   await page.getByLabel('Decay', { exact: true }).fill('1.5');
   assert.deepEqual(await page.evaluate(() => {
@@ -316,7 +328,7 @@ test('menus and transform tools stay accessible at desktop and mobile widths', a
     if (width === 390) assert.ok(visible.height > 500);
     else assert.ok(visible.width > 700);
 
-    for (const name of ['File', 'Edit', 'Add', 'View']) {
+    for (const name of ['File', 'Edit', 'Add', 'Scene Settings', 'View']) {
       const trigger = menu(page, name);
       await trigger.press('Enter');
       const panel = page.locator('details[open] .menu-panel');
@@ -410,8 +422,10 @@ test('scene commands protect changes and reset scene controls while preserving v
   assert.equal(await page.getByLabel('Item type').inputValue(), 'cube');
   assert.equal(await page.getByLabel('Add color').inputValue(), '#ffffff');
 
-  await menu(page, 'View').click();
+  await menu(page, 'Scene Settings').click();
   await page.getByLabel('Sky intensity').press('End');
+  await page.getByLabel('Sky color').fill('#bedaff');
+  await page.getByLabel('Ground color').fill('#634327');
   assert.equal(await status.textContent(), 'Unsaved changes');
   const downloading = page.waitForEvent('download');
   await fileCommand('Save THRL');
@@ -432,12 +446,22 @@ test('scene commands protect changes and reset scene controls while preserving v
   assert.equal(await status.textContent(), 'Unsaved changes');
 
   discard = true;
-  await menu(page, 'View').click();
+  await menu(page, 'Scene Settings').click();
   await page.getByLabel('Sky intensity').press('Home');
+  await page.getByLabel('Sky color').fill('#ffffff');
+  await page.getByLabel('Ground color').fill('#333333');
   chooser = page.waitForEvent('filechooser');
   await fileCommand('Open THRL');
   await (await chooser).setFiles(savedPath);
-  await page.waitForFunction(() => window.current().skyLight.intensity === 2);
+  await page.waitForFunction(() => {
+    const { skyLight } = window.current();
+    return skyLight.intensity === 2 && skyLight.color.getHexString() === 'bedaff' &&
+      skyLight.groundColor.getHexString() === '634327';
+  });
+  await menu(page, 'Scene Settings').click();
+  assert.equal(await page.getByLabel('Sky intensity').inputValue(), '2');
+  assert.equal(await page.getByLabel('Sky color').inputValue(), '#bedaff');
+  assert.equal(await page.getByLabel('Ground color').inputValue(), '#634327');
   assert.equal(await status.textContent(), '');
 });
 

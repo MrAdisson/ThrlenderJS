@@ -2,18 +2,17 @@ import { useState } from 'react';
 import { Color, Light, Mesh, type Object3D, type Vector3 } from 'three';
 import { sceneItemName } from './SceneTree';
 
-export function ColorField({ label, value, change, disabled }: {
+export function ColorField({ label, value, change }: {
   label: string;
   value: string;
   change: (value: string) => void;
-  disabled?: boolean;
 }) {
   return (
     <label className="color-field">
       <span>{label}</span>
       <span className="color-value">
         <span aria-hidden="true">{value.toUpperCase()}</span>
-        <input type="color" aria-label={label} value={value} disabled={disabled} onChange={(event) => change(event.target.value)} />
+        <input type="color" aria-label={label} value={value} onChange={(event) => change(event.target.value)} />
       </span>
     </label>
   );
@@ -58,14 +57,15 @@ function VectorFields({ label, vector, refresh }: { label: string; vector: Vecto
   );
 }
 
-export function Properties({ object, refresh, setVisible }: {
+export function Properties({ object, isSceneSky, refresh, setVisible }: {
   object: Object3D;
+  isSceneSky: boolean;
   refresh: () => void;
   setVisible: (visible: boolean) => void;
 }) {
   const light = object instanceof Light ? object : undefined;
   const material = object instanceof Mesh && !Array.isArray(object.material) ? object.material : undefined;
-  const color = light?.color ?? material?.color;
+  const materialColor = material?.color;
   const name = sceneItemName(object);
 
   return (
@@ -83,16 +83,28 @@ export function Properties({ object, refresh, setVisible }: {
         <input type="checkbox" checked={object.visible} onChange={(event) => setVisible(event.currentTarget.checked)} />
         Visible
       </label>
-      <VectorFields label="Position" vector={object.position} refresh={refresh} />
-      {!light && <VectorFields label="Scale" vector={object.scale} refresh={refresh} />}
-      {color instanceof Color && <ColorField label="Color" value={'#' + color.getHexString()}
-        change={(value) => { color.set(value); refresh(); }} />}
-      {light && <NumberField label="Intensity" value={light.intensity}
-        change={(value) => { light.intensity = value; refresh(); }} />}
-      {light && 'distance' in light && typeof light.distance === 'number' &&
-        <NumberField label="Distance" value={light.distance} change={(value) => { light.distance = value; refresh(); }} />}
-      {light && 'decay' in light && typeof light.decay === 'number' &&
-        <NumberField label="Decay" value={light.decay} change={(value) => { light.decay = value; refresh(); }} />}
+      <fieldset className="property-group">
+        <legend>Transform</legend>
+        <VectorFields label="Position" vector={object.position} refresh={refresh} />
+        {!light && <VectorFields label="Scale" vector={object.scale} refresh={refresh} />}
+      </fieldset>
+      {materialColor instanceof Color && <fieldset className="property-group">
+        <legend>Material</legend>
+        <ColorField label="Color" value={'#' + materialColor.getHexString()}
+          change={(value) => { materialColor.set(value); refresh(); }} />
+      </fieldset>}
+      {isSceneSky && <p className="empty-selection">Adjust sky lighting in <strong>Scene Settings</strong>.</p>}
+      {light && !isSceneSky && <fieldset className="property-group">
+        <legend>Light</legend>
+        <ColorField label="Color" value={'#' + light.color.getHexString()}
+          change={(value) => { light.color.set(value); refresh(); }} />
+        <NumberField label="Intensity" value={light.intensity}
+          change={(value) => { light.intensity = value; refresh(); }} />
+        {'distance' in light && typeof light.distance === 'number' &&
+          <NumberField label="Distance" value={light.distance} change={(value) => { light.distance = value; refresh(); }} />}
+        {'decay' in light && typeof light.decay === 'number' &&
+          <NumberField label="Decay" value={light.decay} change={(value) => { light.decay = value; refresh(); }} />}
+      </fieldset>}
     </>
   );
 }
