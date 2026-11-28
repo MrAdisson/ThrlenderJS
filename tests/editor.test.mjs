@@ -104,8 +104,10 @@ test('App cleans up on StrictMode and remount, and follows the editor container'
   await page.waitForFunction(() => window.current().selectedObject.position.x > 0 && window.current().controls.enabled);
   await page.waitForFunction(() => Number(document.querySelector('[aria-label="Position X"]').value) > 0);
   await page.getByRole('status').getByText('Unsaved changes').waitFor();
+  const cameraBeforeFocus = await page.evaluate(() => window.current().camera.position.toArray());
   await page.keyboard.press('f');
   assert.equal(await page.evaluate(() => window.current().controls.target.x === window.current().selectedObject.position.x), true);
+  assert.notDeepEqual(await page.evaluate(() => window.current().camera.position.toArray()), cameraBeforeFocus);
 
   await page.evaluate(() => window.current().controls.target.set(0, 0, 0));
   await menu(page, 'View').click();
@@ -125,6 +127,60 @@ test('App cleans up on StrictMode and remount, and follows the editor container'
   await page.waitForFunction(() => !window.current().gridHelper.visible);
   await addItem(page);
   assert.equal(await page.evaluate(() => window.current().transformControls.object.name), 'cube');
+});
+
+test('duplicates a mesh independently and applies the chosen snap step during mouse movement', async (t) => {
+  const page = await openEditor(t);
+  const duplicate = page.getByRole('button', { name: 'Duplicate selection' });
+  await menu(page, 'Edit').click();
+  assert.equal(await duplicate.isDisabled(), true);
+  await page.keyboard.press('Escape');
+  await addItem(page, 'cube', '#123456');
+  await menu(page, 'Edit').click();
+  await duplicate.press('Enter');
+  await page.getByRole('button', { name: 'cube Copy', pressed: true, exact: true }).waitFor();
+  await page.getByLabel('Color', { exact: true }).fill('#ff0000');
+  assert.deepEqual(await page.evaluate(() => {
+    const engine = window.current();
+    const copy = engine.selectedObject;
+    const source = engine.scene.getObjectByName('cube');
+    return [
+      source.uuid !== copy.uuid, source.parent === copy.parent,
+      source.geometry !== copy.geometry, source.material !== copy.material,
+      source.material.color.getHexString(), copy.material.color.getHexString(),
+      engine.activeDocument.revision,
+    ];
+  }), [true, true, true, true, '123456', 'ff0000', 3]);
+
+  await page.evaluate(() => Object.assign(document.querySelector('.editor-host').style, {
+    width: '640px', height: '350px', margin: '96px 0 0 120px',
+  }));
+  await page.waitForFunction(() => window.current().camera.aspect === 640 / 350);
+  await menu(page, 'View').click();
+  await page.getByLabel('Move snap step').selectOption('0.25');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => window.current().transformControls.translationSnap === 0.25);
+
+  async function dragCopy() {
+    await page.mouse.move(470, 323);
+    await page.mouse.down();
+    await page.waitForFunction(() => window.current().transformControls.dragging);
+    await page.mouse.move(525, 323, { steps: 4 });
+    await page.mouse.up();
+    return page.evaluate(() => window.current().selectedObject.position.x);
+  }
+
+  const snapped = await dragCopy();
+  assert.ok(snapped > 0 && Number.isInteger(snapped / 0.25));
+  assert.equal(await page.evaluate(() => window.current().scene.getObjectByName('cube').position.x), 0);
+  await page.evaluate(() => window.current().selectedObject.position.set(0, 0, 0));
+  const snap = page.getByRole('button', { name: 'Snap', exact: true });
+  await snap.click();
+  await page.waitForFunction(() => window.current().transformControls.translationSnap === null);
+  const free = await dragCopy();
+  assert.ok(free > 0 && !Number.isInteger(free / 0.25));
+  await snap.click();
+  await page.waitForFunction(() => window.current().transformControls.translationSnap === 0.25);
 });
 
 test('editor commands preserve camera, selection, shapes, lights and local files', async (t) => {

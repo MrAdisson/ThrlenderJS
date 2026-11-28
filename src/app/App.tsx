@@ -5,6 +5,7 @@ import { mountEditor } from './mountEditor';
 import { addItem, itemLabels, type ItemType } from './addItem';
 import { ColorField, Properties } from './Properties';
 import { SceneTree } from './SceneTree';
+import { translationSnapSteps } from '../utils/config';
 
 const tools = [
   { value: 'translate', label: 'Move', shortcut: 'T', icon: 'M12 2v20M2 12h20M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3m14-6 3 3-3 3' },
@@ -113,6 +114,9 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
           <details className="command-menu" name="scene-command">
             <summary>Edit</summary>
             <div className="menu-panel">
+              <button disabled={!engine.canDuplicateSelection} onClick={command(() => engine.duplicateSelection())}>
+                Duplicate selection
+              </button>
               <button disabled={!selectedObject} onClick={command(() => {
                 if (window.confirm('Delete the selected item from the scene?')) engine.removeSelectedObject();
               })}>Delete selection</button>
@@ -158,6 +162,14 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
             <summary>View</summary>
             <div className="menu-panel">
               <Toggle label="Show grid" checked={config.GRID_VISIBLE} change={(value) => setConfig('GRID_VISIBLE', value)} />
+              <label className="type-field">Move snap step
+                <select value={transformSettings.TRANSLATION_SNAP_STEP} onChange={(event) => {
+                  transformSettings.TRANSLATION_SNAP_STEP = Number(event.currentTarget.value);
+                  refresh();
+                }}>
+                  {translationSnapSteps.map((step) => <option key={step} value={step}>{step}</option>)}
+                </select>
+              </label>
               <ColorField label="Grid color" value={colorHex(config.GRID_COLOR)} change={(value) => setConfig('GRID_COLOR', value)} />
               <Toggle label="Show axes" checked={config.AXES_HELPER} change={(value) => setConfig('AXES_HELPER', value)} />
               <Toggle label="Wireframe" checked={config.WIREFRAME_MODE} change={(value) => setConfig('WIREFRAME_MODE', value)} />

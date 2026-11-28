@@ -1,6 +1,8 @@
 import { Color } from 'three';
 import { logger } from './logger';
 
+export const translationSnapSteps = [0.1, 0.25, 0.5, 1, 2, 5];
+
 export const createViewPreferences = () => ({
   WIREFRAME_MODE: false,
   GRID_VISIBLE: true,
@@ -14,11 +16,17 @@ export const createTransformSettings = () => ({
   TRANSFORM_CONTROLS_ENABLED: true,
   TRANSFORM_CONTROLS_MODE: 'translate',
   SNAP_TO_GRID: true,
+  TRANSLATION_SNAP_STEP: 1,
 });
 
 /** @param {import('../ThrlenderEngine').ThrlenderEngine} thrlender */
 export const getConfigCallbacks = (thrlender) => {
   const { config, transformSettings } = thrlender;
+  const applyTranslationSnap = () => {
+    thrlender.transformControls.setTranslationSnap(
+      transformSettings.SNAP_TO_GRID ? transformSettings.TRANSLATION_SNAP_STEP : null
+    );
+  };
   return {
     WIREFRAME_MODE: () => {
       thrlender.scene.traverse((object) => {
@@ -53,19 +61,12 @@ export const getConfigCallbacks = (thrlender) => {
       logger.log('TRANSFORM_CONTROLS_MODE : ' + transformSettings.TRANSFORM_CONTROLS_MODE, 'SETTINGS', 'grey');
     },
     SNAP_TO_GRID: () => {
-      transformSettings.SNAP_TO_GRID
-        ? (() => {
-            thrlender.transformControls.setTranslationSnap(1);
-            thrlender.transformControls.setRotationSnap((15 * Math.PI) / 180);
-            thrlender.transformControls.setScaleSnap(0.25);
-          })()
-        : (() => {
-            thrlender.transformControls.setTranslationSnap(null);
-            thrlender.transformControls.setRotationSnap(null);
-            thrlender.transformControls.setScaleSnap(null);
-          })();
+      applyTranslationSnap();
+      thrlender.transformControls.setRotationSnap(transformSettings.SNAP_TO_GRID ? Math.PI / 12 : null);
+      thrlender.transformControls.setScaleSnap(transformSettings.SNAP_TO_GRID ? 0.25 : null);
       logger.log('SNAP_TO_GRID : ' + transformSettings.SNAP_TO_GRID, 'SETTINGS', 'grey');
     },
+    TRANSLATION_SNAP_STEP: applyTranslationSnap,
     TRANSFORM_CONTROLS_ENABLED: () => {
       transformSettings.TRANSFORM_CONTROLS_ENABLED
         ? (() => {
