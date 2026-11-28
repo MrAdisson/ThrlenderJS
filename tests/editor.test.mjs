@@ -199,7 +199,14 @@ test('editor commands preserve camera, selection, shapes, lights and local files
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({
       ...saved,
-      object: { ...saved.object, name: 'Replacement', children: saved.object.children.filter(({ name }) => name === 'cube') },
+      object: {
+        ...saved.object,
+        name: 'Replacement',
+        children: [
+          ...saved.object.children.filter(({ name }) => ['cube', 'ThrlenderSkyLight'].includes(name)),
+          { uuid: 'legacy-helper', name: 'ThrlenderSkyLightHelper', type: 'Object3D' },
+        ],
+      },
     })),
   });
   await page.waitForFunction(() => window.current().scene.name === 'Replacement');
@@ -209,13 +216,17 @@ test('editor commands preserve camera, selection, shapes, lights and local files
       editor.scene.getObjectByName('cube').isMesh, !!editor.scene.getObjectByName('FBX_Object'),
       editor.transformControls.mode, editor.controls.object === editor.camera, editor.selectedObject,
       editor.scene.getObjectByName('ThrlenderGridHelper') === editor.gridHelper,
+      editor.scene.children.filter(({ name }) => name === 'ThrlenderSkyLightHelper').map(({ type }) => type),
     ];
-  }), [true, false, 'translate', true, null, true]);
+  }), [true, false, 'translate', true, null, true, ['PointLightHelper']]);
   assert.equal(await page.locator('.selection-name').count(), 0);
   assert.equal(await page.evaluate(() => window.current().transformControls.object === undefined), true);
   await page.mouse.click(210, 720);
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => window.current().selectedObject?.name), 'cube');
+  await deleteSelection(page);
+  await page.locator('canvas').press('Tab');
+  assert.equal(await page.locator('.selection-name').innerText(), 'Sky light');
   await deleteSelection(page);
   await upload('Import FBX', resolve('tests/fixtures/triangle.fbx'));
   await page.waitForFunction(() => window.current().scene.getObjectByName('FBX_Object'));
@@ -407,6 +418,18 @@ test('scene commands protect changes and reset scene controls while preserving v
   assert.equal(await status.textContent(), '');
   const savedPath = await saved.path();
 
+  chooser = page.waitForEvent('filechooser');
+  await fileCommand('Open THRL');
+  const pendingFile = await chooser;
+  await addItem(page);
+  discard = false;
+  const lateConfirmation = page.waitForEvent('dialog', (dialog) => dialog.type() === 'confirm');
+  await pendingFile.setFiles(savedPath);
+  await lateConfirmation;
+  assert.equal(await page.evaluate(() => window.current().selectedObject.name), 'cube');
+  assert.equal(await status.textContent(), 'Unsaved changes');
+
+  discard = true;
   await menu(page, 'View').click();
   await page.getByLabel('Sky intensity').press('Home');
   chooser = page.waitForEvent('filechooser');

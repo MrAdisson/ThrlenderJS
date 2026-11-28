@@ -85,7 +85,6 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
     this.camera.position.set(0, 5, 10);
     this.camera.name = 'ThrlenderCamera';
-    this.scene.add(this.camera);
   }
 
   initRenderer() {
@@ -192,13 +191,14 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   save() {
     const activeDocument = this.activeDocument;
     const { scene, revision } = activeDocument;
-    const editorObjects = scene.children.filter((child) =>
-      child === this.axesHelper || child === this.gridHelper || child === this.transformControls || child.light?.isLight);
     const children = scene.children;
     let jsonScene;
     try {
-      scene.children = children.filter((child) => !editorObjects.includes(child));
+      scene.children = children.filter((child) =>
+        child !== this.axesHelper && child !== this.gridHelper && child !== this.transformControls && !child.light?.isLight);
       const data = scene.toJSON();
+      // Keep the camera entry used by older THRL exports.
+      data.object.children = [...(data.object.children ?? []), this.camera.toJSON().object];
       for (const material of data.materials ?? []) delete material.wireframe;
       jsonScene = JSON.stringify(data);
     } finally {
@@ -309,7 +309,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     }
 
     this.activeDocument = next;
-    scene.add(this.camera, this.gridHelper, this.axesHelper, this.transformControls);
+    scene.add(this.gridHelper, this.axesHelper, this.transformControls);
     for (const light of lights) this.addLightHelper(light);
     getConfigCallbacks(this).WIREFRAME_MODE();
     disposeScene(previous, scene);
