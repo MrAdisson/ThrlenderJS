@@ -8,7 +8,7 @@ Thrlender is a browser based 3D scene editor inspired by Blender. It uses Three.
 - Add point, spot, directional and ambient lights.
 - Select items in the viewport or in the **Scene** hierarchy. Expand imported groups to select their children.
 - Move, rotate or scale the selection with the transform controls. Use **Inspector** to rename items, change visibility and edit their properties. Use **Edit** to duplicate a selected mesh or delete the selection.
-- Switch a cube or plane to **Edit Mode** to move its vertices or extrude a face. The edited geometry is saved with the THRL scene.
+- Switch a cube, plane or static FBX mesh to **Edit Mode** to move vertices or extrude a face. Select an individual imported mesh in **Scene**. Each imported triangle is selectable as a face. Meshes with a skeleton or morph targets can be imported and stay in **Object Mode**. Edited geometry is saved with the THRL scene.
 - Orbit around the scene with the camera controls. Adjust the grid, axes and wireframe display in **View**. Use **Snap** in the transform toolbar to toggle snapping and **Move snap step** in **View** to choose the move increment. Adjust the built-in sky light in **Scene Settings**.
 - Create a new scene, save it by downloading a `.thrl` file, or open a local `.thrl` file. New Scene and Open THRL ask before discarding unsaved changes. Names, visibility and sky lighting are saved with the scene.
 - Import a local `.fbx` model into the current scene.
