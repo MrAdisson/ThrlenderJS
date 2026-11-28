@@ -8,9 +8,34 @@ const init = (thrlender) => {
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 
+  let vertexClick;
+  const onPointerDown = (event) => {
+    const session = thrlender.vertexEdit;
+    vertexClick = session && event.button === 0 && event.isPrimary && !thrlender.transformControls.dragging
+      ? { session, id: event.pointerId, x: event.clientX, y: event.clientY, extend: event.shiftKey }
+      : undefined;
+  };
+
+  const clearVertexClick = () => { vertexClick = undefined; };
+  const onPointerMove = (event) => {
+    if (vertexClick?.id === event.pointerId &&
+        Math.hypot(event.clientX - vertexClick.x, event.clientY - vertexClick.y) > 4) clearVertexClick();
+  };
+
+  const onPointerUp = (event) => {
+    const start = vertexClick;
+    clearVertexClick();
+    if (!start || start.session !== thrlender.vertexEdit || start.id !== event.pointerId ||
+        Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4) return;
+    const bounds = canvas.getBoundingClientRect();
+    start.session.pick(event.clientX - bounds.left, event.clientY - bounds.top, bounds, thrlender.camera, start.extend);
+    thrlender.syncSelectionGizmo();
+    thrlender.dispatchEvent({ type: 'selection-changed' });
+  };
+
   const onMouseClick = (event) => {
     canvas.focus({ preventScroll: true });
-    if (thrlender.transformControls.dragging) return;
+    if (thrlender.vertexEdit || thrlender.transformControls.dragging) return;
     const bounds = canvas.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
     mouse.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
@@ -37,8 +62,28 @@ const init = (thrlender) => {
     thrlender.setSelectedObject(hit);
   };
 
+  const onAdditivePointerDown = (event) => {
+    if (!thrlender.vertexEdit || !event.shiftKey || event.button !== 0 || !event.isPrimary) return;
+    onPointerDown(event);
+    canvas.focus({ preventScroll: true });
+    canvas.setPointerCapture(event.pointerId);
+    event.stopImmediatePropagation();
+  };
+
   canvas.addEventListener('mousedown', onMouseClick);
-  return () => canvas.removeEventListener('mousedown', onMouseClick);
+  canvas.addEventListener('pointerdown', onAdditivePointerDown, true);
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointercancel', clearVertexClick);
+  return () => {
+    canvas.removeEventListener('mousedown', onMouseClick);
+    canvas.removeEventListener('pointerdown', onAdditivePointerDown, true);
+    canvas.removeEventListener('pointerdown', onPointerDown);
+    canvas.removeEventListener('pointermove', onPointerMove);
+    canvas.removeEventListener('pointerup', onPointerUp);
+    canvas.removeEventListener('pointercancel', clearVertexClick);
+  };
 };
 
 export const mouseManager = {

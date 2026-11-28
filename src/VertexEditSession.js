@@ -1,5 +1,5 @@
 import { BufferGeometry, Color, Float32BufferAttribute, Object3D, Points, PointsMaterial, Vector3 } from 'three';
-import { VertexTopology } from './VertexTopology.js';
+import { VertexTopology } from './VertexTopology.mjs';
 
 export class VertexEditSession {
   selected = new Set();

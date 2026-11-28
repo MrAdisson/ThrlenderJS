@@ -57,9 +57,10 @@ function VectorFields({ label, vector, refresh }: { label: string; vector: Vecto
   );
 }
 
-export function Properties({ object, isSceneSky, refresh, setVisible }: {
+export function Properties({ object, isSceneSky, refresh, setVisible, showTransform }: {
   object: Object3D;
   isSceneSky: boolean;
+  showTransform: boolean;
   refresh: () => void;
   setVisible: (visible: boolean) => void;
 }) {
@@ -83,11 +84,11 @@ export function Properties({ object, isSceneSky, refresh, setVisible }: {
         <input type="checkbox" checked={object.visible} onChange={(event) => setVisible(event.currentTarget.checked)} />
         Visible
       </label>
-      <fieldset className="property-group">
+      {showTransform && <fieldset className="property-group">
         <legend>Transform</legend>
         <VectorFields label="Position" vector={object.position} refresh={refresh} />
         {!light && <VectorFields label="Scale" vector={object.scale} refresh={refresh} />}
-      </fieldset>
+      </fieldset>}
       {materialColor instanceof Color && <fieldset className="property-group">
         <legend>Material</legend>
         <ColorField label="Color" value={'#' + materialColor.getHexString()}

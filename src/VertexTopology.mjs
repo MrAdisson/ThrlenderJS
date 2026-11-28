@@ -2,12 +2,19 @@ import { BufferGeometry, Vector3 } from 'three';
 
 const topologyKey = 'thrlenderVertexGroups';
 
+export function supportsVertexEditing(mesh) {
+  const geometry = mesh.geometry;
+  return !mesh.isSkinnedMesh && !mesh.isInstancedMesh && !!geometry.getAttribute('position') &&
+    (geometry.type === 'BoxGeometry' || geometry.type === 'PlaneGeometry' ||
+      Array.isArray(geometry.userData[topologyKey]));
+}
+
 // Map logical vertices to all render vertices at the same local position.
 export class VertexTopology {
   constructor(geometry) {
     const position = geometry.getAttribute('position');
     const groups = geometry.userData[topologyKey];
-    const indices = groups?.flat?.();
+    const indices = Array.isArray(groups) ? groups.flat() : undefined;
     if (indices?.length === position.count && new Set(indices).size === position.count &&
         indices.every((index) => Number.isInteger(index) && index >= 0 && index < position.count) &&
         groups.every((group) => Array.isArray(group) && group.length)) {
