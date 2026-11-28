@@ -1,5 +1,3 @@
-import { selectionnableObjectsTypes } from './utils/config';
-
 /** @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender */
 const init = (thrlender) => {
   const canvas = thrlender.renderer.domElement;
@@ -43,15 +41,17 @@ const init = (thrlender) => {
     }
     if (event.key === 'f') thrlender.focusSelection();
     if (event.key === 'Tab') {
-      const objects = thrlender.scene.children.filter((obj) => selectionnableObjectsTypes.includes(obj.name));
-      const distances = [];
-      objects.forEach((obj) => {
-        const distance = thrlender.camera.position.distanceTo(obj.position);
-        distances.push(distance);
-      });
-      const minDistance = Math.min(...distances);
-      const index = distances.indexOf(minDistance);
-      thrlender.setSelectedObject(objects[index]);
+      let closest;
+      let distance = Infinity;
+      for (const object of thrlender.sceneItems()) {
+        if (!thrlender.isVisible(object)) continue;
+        const candidate = thrlender.camera.position.distanceToSquared(object.position);
+        if (candidate < distance) {
+          closest = object;
+          distance = candidate;
+        }
+      }
+      thrlender.setSelectedObject(closest);
       // Keep the scene shortcut, and let Tab continue into the editor controls.
     }
   };

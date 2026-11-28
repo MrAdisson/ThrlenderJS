@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Color, Light, Mesh, type Object3D, type Vector3 } from 'three';
-import { itemLabels, type ItemType } from './addItem';
+import { sceneItemName } from './SceneTree';
 
 export function ColorField({ label, value, change, disabled }: {
   label: string;
@@ -58,18 +58,31 @@ function VectorFields({ label, vector, refresh }: { label: string; vector: Vecto
   );
 }
 
-export function Properties({ object, refresh }: {
+export function Properties({ object, refresh, setVisible }: {
   object: Object3D;
   refresh: () => void;
+  setVisible: (visible: boolean) => void;
 }) {
   const light = object instanceof Light ? object : undefined;
   const material = object instanceof Mesh && !Array.isArray(object.material) ? object.material : undefined;
   const color = light?.color ?? material?.color;
-  const name = itemLabels[object.name as ItemType] ?? (object.name === 'ThrlenderSkyLight' ? 'Sky light' : object.name);
+  const name = sceneItemName(object);
 
   return (
     <>
-      <div className="selection-name">{name || object.type}</div>
+      <div className="selection-name">{name}</div>
+      <label className="type-field">Name
+        <input type="text" value={object.userData.thrlenderRenamed ? object.name : name}
+          onChange={(event) => {
+            object.name = event.currentTarget.value;
+            object.userData.thrlenderRenamed = true;
+            refresh();
+          }} />
+      </label>
+      <label className="toggle">
+        <input type="checkbox" checked={object.visible} onChange={(event) => setVisible(event.currentTarget.checked)} />
+        Visible
+      </label>
       <VectorFields label="Position" vector={object.position} refresh={refresh} />
       {!light && <VectorFields label="Scale" vector={object.scale} refresh={refresh} />}
       {color instanceof Color && <ColorField label="Color" value={'#' + color.getHexString()}

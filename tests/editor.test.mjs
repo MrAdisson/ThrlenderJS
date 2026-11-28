@@ -66,6 +66,13 @@ async function addItem(page, type, color) {
   await page.getByRole('button', { name: 'Add to scene', exact: true }).press('Enter');
 }
 
+async function upload(page, label, file) {
+  await menu(page, 'File').click();
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: label, exact: true }).click();
+  await (await chooser).setFiles(file);
+}
+
 async function deleteSelection(page) {
   await menu(page, 'Edit').click();
   await page.getByRole('button', { name: 'Delete selection' }).click();
@@ -144,8 +151,8 @@ test('editor commands preserve camera, selection, shapes, lights and local files
   await page.mouse.click(210, 720);
   await page.waitForFunction(() => window.current().selectedObject === null);
   await page.keyboard.press('Tab');
-  assert.equal(await page.evaluate(() => window.current().selectedObject?.name), 'ThrlenderSkyLight');
-  assert.equal(await page.locator('.selection-name').innerText(), 'Sky light');
+  assert.equal(await page.evaluate(() => window.current().selectedObject?.name), 'pointLight');
+  assert.equal(await page.locator('.selection-name').innerText(), 'Point light');
   await page.locator('canvas').focus();
   for (const [key, mode] of [['r', 'rotate'], ['s', 'scale'], ['t', 'translate']]) {
     await page.keyboard.press(key);
@@ -168,14 +175,7 @@ test('editor commands preserve camera, selection, shapes, lights and local files
   await page.mouse.wheel(0, -200);
   await page.waitForFunction((distance) => window.current().controls.getDistance() < distance, initialDistance);
 
-  async function upload(label, file) {
-    await menu(page, 'File').click();
-    const chooserPromise = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: label, exact: true }).click();
-    await (await chooserPromise).setFiles(file);
-  }
-
-  await upload('Import FBX', resolve('tests/fixtures/triangle.fbx'));
+  await upload(page, 'Import FBX', resolve('tests/fixtures/triangle.fbx'));
   await page.waitForFunction(() => window.current().scene.getObjectByName('FBX_Object')?.getObjectByName('Triangle')?.isMesh);
 
   await menu(page, 'File').click();
@@ -193,12 +193,19 @@ test('editor commands preserve camera, selection, shapes, lights and local files
 
   await page.locator('canvas').press('r');
   await page.waitForFunction(() => window.current().transformControls.mode === 'rotate');
-  await upload('Open THRL', {
+  await upload(page, 'Open THRL', {
     name: 'replacement.thrl',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({
       ...saved,
-      object: { ...saved.object, name: 'Replacement', children: saved.object.children.filter(({ name }) => name === 'cube') },
+      object: {
+        ...saved.object,
+        name: 'Replacement',
+        children: [
+          ...saved.object.children.filter(({ name }) => name === 'cube'),
+          { uuid: 'old-helper', type: 'PointLightHelper', name: 'pointLightHelper' },
+        ],
+      },
     })),
   });
   await page.waitForFunction(() => window.current().scene.name === 'Replacement');
@@ -212,11 +219,12 @@ test('editor commands preserve camera, selection, shapes, lights and local files
   }), [true, false, 'rotate', true, null, true]);
   assert.equal(await page.locator('.selection-name').count(), 0);
   assert.equal(await page.evaluate(() => window.current().transformControls.object === undefined), true);
+  assert.deepEqual(await page.locator('.scene-select').allTextContents(), ['Cube']);
   await page.mouse.click(210, 720);
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => window.current().selectedObject?.name), 'cube');
   await deleteSelection(page);
-  await upload('Import FBX', resolve('tests/fixtures/triangle.fbx'));
+  await upload(page, 'Import FBX', resolve('tests/fixtures/triangle.fbx'));
   await page.waitForFunction(() => window.current().scene.getObjectByName('FBX_Object'));
   await page.locator('canvas').press('Tab');
   assert.equal(await page.locator('.selection-name').innerText(), 'FBX_Object');
@@ -333,4 +341,83 @@ test('menus and transform tools stay accessible at desktop and mobile widths', a
     await viewport.press('t');
     await page.getByRole('button', { name: 'Move', pressed: true }).waitFor();
   }
+});
+
+test('scene hierarchy follows viewport picking and preserves names and visibility through THRL', async (t) => {
+  const page = await openEditor(t);
+  const tree = page.getByRole('region', { name: 'Scene' });
+  const row = (name) => tree.getByRole('button', { name, exact: true });
+  const nameField = page.getByRole('textbox', { name: 'Name', exact: true });
+  const visibility = page.getByRole('checkbox', { name: 'Visible', exact: true });
+
+  await upload(page, 'Import FBX', resolve('tests/fixtures/triangle.fbx'));
+  await row('Expand FBX_Object').press('Enter');
+  await row('Triangle').press('Enter');
+  assert.equal(await nameField.inputValue(), 'Triangle');
+  assert.equal(await page.evaluate(() => window.current().transformControls.object?.name), 'Triangle');
+  await nameField.fill('Front face');
+  await row('Collapse FBX_Object').click();
+  assert.equal(await row('Front face').count(), 0);
+  await row('FBX_Object').click();
+
+  const point = await page.evaluate(() => {
+    const { scene, camera, renderer } = window.current();
+    const mesh = scene.getObjectByName('Front face');
+    const projected = mesh.localToWorld(mesh.position.clone().set(1 / 3, 1 / 3, 0)).project(camera);
+    const bounds = renderer.domElement.getBoundingClientRect();
+    return {
+      x: bounds.left + (projected.x + 1) * bounds.width / 2,
+      y: bounds.top + (1 - projected.y) * bounds.height / 2,
+    };
+  });
+  // Turn the gizmo off so the click goes to the triangle underneath.
+  await page.getByRole('button', { name: 'Gizmo', pressed: true }).click();
+  await page.mouse.click(point.x, point.y);
+  await tree.getByRole('button', { name: 'Front face', pressed: true }).waitFor();
+
+  await row('FBX_Object').click();
+  await nameField.fill('Model');
+  await visibility.uncheck();
+  assert.equal(await row('Front face').getAttribute('data-hidden'), 'true');
+  await page.mouse.click(point.x, point.y);
+  await page.waitForFunction(() => window.current().selectedObject === null);
+  await row('Front face').click();
+  assert.equal(await visibility.isChecked(), true);
+  await visibility.uncheck();
+
+  await row('Sky light').click();
+  await nameField.fill('Dusk');
+  await visibility.uncheck();
+  await addItem(page, 'pointLight');
+  await nameField.fill('Fill');
+  await visibility.uncheck();
+  assert.equal(await page.evaluate(() => {
+    const engine = window.current();
+    return [...engine.lightHelpers].every((helper) => !helper.visible);
+  }), true);
+  assert.deepEqual(await tree.locator('.scene-select').allTextContents(), ['Dusk', 'Model', 'Front face', 'Fill']);
+
+  await menu(page, 'File').click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save THRL', exact: true }).click();
+  const download = await downloadPromise;
+  await row('Collapse Model').click();
+  await upload(page, 'Open THRL', await download.path());
+  await page.waitForFunction(() => window.current().selectedObject === null);
+  await row('Expand Model').click();
+  for (const name of ['Model', 'Front face', 'Dusk', 'Fill']) {
+    await row(name).click();
+    assert.equal(await nameField.inputValue(), name);
+    assert.equal(await visibility.isChecked(), false);
+  }
+  assert.equal(await page.evaluate(() => window.current().skyLight?.name), 'Dusk');
+  await visibility.check();
+  assert.equal(await page.evaluate(() => {
+    const engine = window.current();
+    return [...engine.lightHelpers].find(({ light }) => light.name === 'Fill')?.visible;
+  }), true);
+  await row('Model').click();
+  await deleteSelection(page);
+  assert.equal(await row('Model').count(), 0);
+  assert.equal(await row('Front face').count(), 0);
 });
