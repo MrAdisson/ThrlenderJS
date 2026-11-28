@@ -1,14 +1,21 @@
 version: 1
 image: node:24-bookworm
-setup: [npm ci]
+setup: [ npm ci ]
 verify:
   build: npm run build
   typecheck: npm run typecheck
   test: npm test
-egress_allow: [registry.npmjs.org]
+egress_allow:
+  [
+    registry.npmjs.org,
+    accounts.google.com,
+    update.googleapis.com,
+    www.google.com,
+    content-autofill.googleapis.com
+  ]
 environments:
   staging:
-    setup: [npm ci --include=dev, npm run build]
+    setup: [ npm ci --include=dev, npm run build ]
     start: npm exec -- vite preview --host "$HOST" --port "$PORT" --strictPort
     port: 4173
     ready: { http: /ThrlenderJS/ }
