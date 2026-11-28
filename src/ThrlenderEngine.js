@@ -32,6 +32,33 @@ function collectResources(scene) {
   return resources;
 }
 
+function copySkin(source, copy) {
+  const { bones, boneInverses } = source.skeleton;
+  const boneCopies = new Map(bones.filter(Boolean).map((bone) => [bone, bone.clone(false)]));
+  source.updateWorldMatrix(true, false);
+  const worldToMesh = source.bindMode === THREE.DetachedBindMode
+    ? source.bindMatrixInverse
+    : source.matrixWorld.clone().invert();
+
+  for (const [bone, boneCopy] of boneCopies) {
+    const parentCopy = boneCopies.get(bone.parent);
+    if (parentCopy) {
+      parentCopy.add(boneCopy);
+    } else {
+      bone.updateWorldMatrix(true, false);
+      boneCopy.matrix.multiplyMatrices(worldToMesh, bone.matrixWorld);
+      boneCopy.matrix.decompose(boneCopy.position, boneCopy.quaternion, boneCopy.scale);
+      copy.add(boneCopy);
+    }
+  }
+
+  copy.bindMode = THREE.AttachedBindMode;
+  copy.bind(new THREE.Skeleton(
+    bones.map((bone) => boneCopies.get(bone)),
+    boneInverses.map((matrix) => matrix.clone()),
+  ), source.bindMatrix);
+}
+
 export class ThrlenderEngine extends THREE.EventDispatcher {
   config = createViewPreferences();
   transformSettings = createTransformSettings();
@@ -390,7 +417,47 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   }
 
   focusSelection() {
-    this.selectedObject?.getWorldPosition(this.controls.target);
+    const object = this.selectedObject;
+    if (!object) return;
+
+    // Clear pending orbit motion before setting the new pose.
+    const damping = this.controls.enableDamping;
+    this.controls.enableDamping = false;
+    this.controls.update();
+
+    const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+    const bounds = new THREE.Box3().setFromObject(object);
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const vertical = THREE.MathUtils.degToRad(this.camera.getEffectiveFOV() / 2);
+    const horizontal = Math.atan(Math.tan(vertical) * this.camera.aspect);
+    const radius = Math.max(0.5, sphere.radius);
+    const distance = (1.2 * radius) / Math.sin(Math.min(vertical, horizontal));
+    if (bounds.isEmpty()) object.getWorldPosition(this.controls.target);
+    else this.controls.target.copy(sphere.center);
+
+    this.camera.position.copy(this.controls.target).addScaledVector(direction, distance);
+    this.controls.update();
+    this.controls.enableDamping = damping;
+  }
+
+  get canDuplicateSelection() {
+    return this.selectedObject instanceof THREE.Mesh && !!this.selectedObject.parent;
+  }
+
+  duplicateSelection() {
+    const source = this.selectedObject;
+    if (!(source instanceof THREE.Mesh) || !source.parent) return;
+
+    const copy = source.clone(false);
+    copy.name = source.name ? source.name + ' Copy' : 'Mesh Copy';
+    copy.geometry = source.geometry.clone();
+    copy.material = Array.isArray(source.material)
+      ? source.material.map((material) => material.clone())
+      : source.material.clone();
+    if (source instanceof THREE.SkinnedMesh && source.skeleton) copySkin(source, copy);
+    source.parent.add(copy);
+    this.setSelectedObject(copy);
+    this.markDocumentChanged();
   }
 
   removeSelectedObject() {
