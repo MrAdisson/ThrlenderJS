@@ -1,6 +1,6 @@
 import { BufferGeometry, Vector3 } from 'three';
 
-const topologyKey = 'thrlenderVertexGroups';
+export const topologyKey = 'thrlenderVertexGroups';
 
 export function supportsVertexEditing(mesh) {
   const geometry = mesh.geometry;

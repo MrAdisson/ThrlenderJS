@@ -309,3 +309,7 @@ legend { padding: 0; margin-bottom: 5px; }
 @media (max-height: 480px) {
   .viewport-mode { margin: calc(var(--space) + 58px) var(--space) 0; }
 }
+
+.edit-actions { margin-top: 4px; }
+.extrusion-controls { align-items: center; }
+.extrusion-controls input { width: 64px; }

@@ -1,4 +1,5 @@
-import { BufferGeometry, Color, Float32BufferAttribute, Object3D, Points, PointsMaterial, Vector3 } from 'three';
+import { BufferGeometry, Color, Float32BufferAttribute, DoubleSide, Mesh, MeshBasicMaterial, Object3D, Points, PointsMaterial, Raycaster, Vector2, Vector3 } from 'three';
+import { describeFace, extrudeFace, logicalFaces, triangleVertices } from './FaceTopology.mjs';
 import { VertexTopology } from './VertexTopology.mjs';
 
 export class VertexEditSession {
@@ -6,10 +7,27 @@ export class VertexEditSession {
   pivot = new Object3D();
   previousPosition = new Vector3();
   edited = false;
+  selectionMode = 'vertices';
+  selectedFace = undefined;
+  faceDescription = null;
+  preview = null;
+  previewing = false;
 
   constructor(mesh, scene) {
     this.mesh = mesh;
     this.topology = new VertexTopology(mesh.geometry);
+    this.faces = logicalFaces(mesh.geometry);
+    this.faceHighlight = new Mesh(new BufferGeometry(), new MeshBasicMaterial({
+      color: '#ffae49', side: DoubleSide, transparent: true, opacity: 0.45,
+      depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+    }));
+    this.faceHighlight.visible = false;
+    this.faceHighlight.matrixAutoUpdate = false;
+    scene.add(this.faceHighlight, this.pivot);
+    this.createPoints(scene);
+  }
+
+  createPoints(scene) {
     const size = this.topology.groups.length * 3;
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(size), 3));
@@ -20,13 +38,22 @@ export class VertexEditSession {
     this.points.renderOrder = 1;
     this.points.frustumCulled = false;
     this.points.matrixAutoUpdate = false;
-    scene.add(this.points, this.pivot);
+    scene.add(this.points);
+    this.points.visible = this.selectionMode === 'vertices';
     this.syncPoints();
     this.syncColors();
   }
 
   dispose() {
+    this.preview?.dispose();
+    this.faceHighlight.removeFromParent();
+    this.faceHighlight.geometry.dispose();
+    this.faceHighlight.material.dispose();
     this.pivot.removeFromParent();
+    this.disposePoints();
+  }
+
+  disposePoints() {
     this.points.removeFromParent();
     this.points.geometry.dispose();
     this.points.material.dispose();
@@ -58,9 +85,25 @@ export class VertexEditSession {
     const parent = this.points.parent;
     this.points.matrix.copy(parent.matrixWorld).invert().multiply(this.mesh.matrixWorld);
     this.points.matrixWorldNeedsUpdate = true;
+    this.faceHighlight.matrix.copy(this.points.matrix);
+    this.faceHighlight.matrixWorldNeedsUpdate = true;
   }
 
   pick(x, y, bounds, camera, extend) {
+    if (this.previewing) return;
+    if (this.selectionMode === 'faces') {
+      camera.updateMatrixWorld();
+      this.mesh.updateWorldMatrix(true, false);
+      const raycaster = new Raycaster();
+      raycaster.setFromCamera(new Vector2(2 * x / bounds.width - 1, 1 - 2 * y / bounds.height), camera);
+      const hit = raycaster.intersectObject(this.mesh, false)[0];
+      this.selectedFace = hit ? this.faces[hit.faceIndex] : undefined;
+      this.faceDescription = hit
+        ? describeFace(this.mesh.geometry, this.topology, this.faces, this.selectedFace)
+        : null;
+      this.syncFaceHighlight();
+      return;
+    }
     const point = new Vector3();
     let nearest;
     let bestDistance = 9 ** 2;
@@ -86,6 +129,71 @@ export class VertexEditSession {
     }
     this.syncColors();
     this.syncPivot();
+  }
+
+  setSelectionMode(mode) {
+    if (mode === this.selectionMode) return;
+    this.endPreview();
+    this.selectionMode = mode;
+    this.selectedFace = undefined;
+    this.faceDescription = null;
+    this.selected.clear();
+    this.points.visible = mode === 'vertices';
+    this.syncColors();
+    this.syncFaceHighlight();
+  }
+
+  syncFaceHighlight() {
+    this.faceHighlight.visible = this.selectedFace !== undefined;
+    if (!this.faceHighlight.visible) return;
+    const geometry = this.preview ?? this.mesh.geometry;
+    const position = geometry.getAttribute('position');
+    const points = [];
+    const point = new Vector3();
+    this.faces.forEach((id, triangle) => {
+      if (id !== this.selectedFace) return;
+      for (const index of triangleVertices(geometry, triangle)) {
+        points.push(...point.fromBufferAttribute(position, index));
+      }
+    });
+    this.faceHighlight.geometry.dispose();
+    this.faceHighlight.geometry = new BufferGeometry();
+    this.faceHighlight.geometry.setAttribute('position', new Float32BufferAttribute(points, 3));
+  }
+
+  get canExtrude() {
+    return !!this.faceDescription?.normal.lengthSq() && !!this.faceDescription.boundary.length;
+  }
+
+  previewExtrusion(distance) {
+    if (!this.canExtrude) return;
+    this.previewing = true;
+    this.preview?.dispose();
+    this.preview = extrudeFace(this.mesh.geometry, this.faces, this.selectedFace, this.faceDescription, distance);
+    this.syncFaceHighlight();
+  }
+
+  endPreview() {
+    this.preview?.dispose();
+    this.preview = null;
+    this.previewing = false;
+    this.syncFaceHighlight();
+  }
+
+  commitExtrusion(replaceGeometry) {
+    if (!this.preview) return false;
+    const geometry = this.preview;
+    this.preview = null;
+    this.previewing = false;
+    replaceGeometry(geometry);
+    this.edited = true;
+    this.faces = logicalFaces(geometry);
+    this.topology = new VertexTopology(geometry);
+    this.faceDescription = describeFace(geometry, this.topology, this.faces, this.selectedFace);
+    this.disposePoints();
+    this.createPoints(this.pivot.parent);
+    this.syncFaceHighlight();
+    return true;
   }
 
   syncPivot() {
