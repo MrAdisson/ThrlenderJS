@@ -25,9 +25,9 @@ La version actuelle couvre la navigation 3D, la composition et l’éclairage d�
 <!-- builder:journeys -->
 ## Parcours clés
 
-1. Choisir une forme et une couleur dans **Add to scene**, activer **Add**, puis placer la forme avec le manipulateur ou **Properties**.
-2. Ajouter une lumière, régler ses propriétés ou configurer la lumière du ciel dans **Lighting**.
-3. Dans **File**, ajouter un modèle avec **Import FBX**, télécharger la scène avec **Save THRL** ou la remplacer avec **Open THRL**. [Interface](../src/app/App.tsx)
+1. Choisir une forme et une couleur dans **Add**, activer **Add to scene**, puis placer la forme avec le manipulateur ou **Inspector**.
+2. Ajouter une lumière, régler ses propriétés ou configurer la lumière du ciel dans la section **Lighting** du menu **View**. Le menu **Edit** permet de supprimer l’élément sélectionné après confirmation.
+3. Dans **File**, ajouter un modèle avec **Import FBX**, télécharger la scène avec **Save THRL** ou confirmer son remplacement avec **Open THRL** avant de choisir le fichier. [Interface](../src/app/App.tsx)
 
 <!-- builder:success -->
 ## Mesures de succès
