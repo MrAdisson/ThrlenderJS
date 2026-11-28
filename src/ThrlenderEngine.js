@@ -65,6 +65,9 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   config = createViewPreferences();
   transformSettings = createTransformSettings();
   activeDocument = SceneDocument.create();
+  undoStack = [];
+  redoStack = [];
+  transformGesture = null;
 
   get scene() {
     return this.activeDocument.scene;
@@ -102,6 +105,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     for (const url of this.objectUrls) URL.revokeObjectURL(url);
     this.objectUrls.clear();
 
+    if (this.transformControls) this.transformControls.dragging = false;
     this.stopVertexEditing();
     this.controls?.dispose();
     this.transformControls?.removeEventListener('dragging-changed', this.syncCameraControls);
@@ -109,6 +113,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.transformControls?.detach();
     this.transformControls?.removeFromParent();
     this.transformControls?.dispose();
+    this.clearHistory();
     if (this.scene) disposeScene(this.scene);
     this.renderer?.dispose();
     this.renderer?.forceContextLoss();
@@ -149,9 +154,66 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.scene.add(helper);
   }
 
-  markDocumentChanged() {
+  notifyDocumentChanged() {
     this.activeDocument.revision++;
     this.dispatchEvent({ type: 'document-changed' });
+  }
+
+  markDocumentChanged() {
+    this.discardHistory(this.redoStack.splice(0));
+    this.notifyDocumentChanged();
+  }
+
+  recordOperation(operation) {
+    this.undoStack.push(operation);
+    this.markDocumentChanged();
+  }
+
+  discardHistory(entries) {
+    if (!entries.length) return;
+    // Detached objects and old geometries can still be shared with either history stack.
+    const resourcesFor = (entry) => entry.object ? collectResources(entry.object) : entry.geometries ?? [];
+    const retained = collectResources(this.scene);
+    for (const entry of [...this.undoStack, ...this.redoStack]) {
+      for (const resource of resourcesFor(entry)) retained.add(resource);
+    }
+    const discarded = new Set(entries.flatMap((entry) => [...resourcesFor(entry)]));
+    for (const resource of discarded) {
+      if (!retained.has(resource)) resource?.dispose();
+    }
+  }
+
+  clearHistory() {
+    this.discardHistory([...this.undoStack.splice(0), ...this.redoStack.splice(0)]);
+  }
+
+  get canUndo() {
+    return !this.transformGesture && this.undoStack.length > 0;
+  }
+
+  get canRedo() {
+    return !this.transformGesture && this.redoStack.length > 0;
+  }
+
+  undo() {
+    if (this.canUndo) this.replayOperation(this.undoStack, this.redoStack, 'undo');
+  }
+
+  redo() {
+    if (this.canRedo) this.replayOperation(this.redoStack, this.undoStack, 'redo');
+  }
+
+  replayOperation(source, destination, direction) {
+    const operation = source.pop();
+    destination.push(operation);
+    operation[direction]();
+    this.notifyDocumentChanged();
+  }
+
+  restoreSelection(object) {
+    let root = object;
+    while (root?.parent) root = root.parent;
+    this.setSelectedObject(root === this.scene ? object : null);
   }
 
   editSelection = () => {
@@ -159,30 +221,74 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.markDocumentChanged();
   };
 
-  onTransformChange = () => {
-    if (!this.vertexEdit) {
-      this.editSelection();
-      return;
+  restoreTransformedSelection(object) {
+    this.updateLightHelper(object);
+    this.restoreSelection(object);
+    if (this.vertexEdit) {
+      if (this.editModeUnavailableReason) this.setEditMode(false);
+      else this.vertexEdit.syncPivot();
     }
+  }
 
-    if (this.vertexEdit.translateSelection(this.replaceEditGeometry)) this.markDocumentChanged();
+  /** @param {THREE.Object3D} object @param {'position' | 'scale'} field @param {'x' | 'y' | 'z'} axis @param {number} value */
+  setTransformValue(object, field, axis, value) {
+    this.transformControls.dragging = false;
+    const previous = object[field][axis];
+    if (previous === value) return;
+    const apply = (next) => {
+      object[field][axis] = next;
+      this.restoreTransformedSelection(object);
+    };
+    apply(value);
+    this.recordOperation({ undo: () => apply(previous), redo: () => apply(value) });
+  }
+
+  onTransformChange = () => {
+    const gesture = this.transformGesture;
+    if (!gesture) return;
+    if (gesture.session) {
+      gesture.session.translateSelection(() => {
+        if (gesture.object.geometry === gesture.before) {
+          gesture.object.geometry = gesture.session.topology.editableCopy(gesture.before);
+        }
+      });
+    } else {
+      this.updateLightHelper(gesture.object);
+      this.dispatchEvent({ type: 'selection-changed' });
+    }
   };
 
-  replaceEditGeometry = (geometry) => {
-    const mesh = this.vertexEdit.mesh;
-    const previous = mesh.geometry;
-    mesh.geometry = geometry;
-    if (!collectResources(this.scene).has(previous)) previous.dispose();
-  };
+  recordGeometryChange(mesh, before) {
+    const after = mesh.geometry;
+    const apply = (geometry) => {
+      const mode = this.vertexEdit?.mesh === mesh ? this.vertexEdit.selectionMode : null;
+      if (mode) this.stopVertexEditing();
+      mesh.geometry = geometry;
+      this.restoreSelection(mesh);
+      if (mode && !this.editModeUnavailableReason) {
+        this.setEditMode(true);
+        this.setEditSelectionMode(mode);
+      } else {
+        this.syncTransformMode();
+        this.syncSelectionGizmo();
+      }
+    };
+    this.recordOperation({ geometries: [before, after], undo: () => apply(before), redo: () => apply(after) });
+  }
 
   setEditSelectionMode(mode) {
+    this.transformControls.dragging = false;
     this.vertexEdit?.setSelectionMode(mode);
     this.syncSelectionGizmo();
     this.dispatchEvent({ type: 'selection-changed' });
   }
 
   commitExtrusion() {
-    if (this.vertexEdit?.commitExtrusion(this.replaceEditGeometry)) this.markDocumentChanged();
+    this.transformControls.dragging = false;
+    const session = this.vertexEdit;
+    if (!session) return;
+    const before = session.mesh.geometry;
+    if (session.commitExtrusion()) this.recordGeometryChange(session.mesh, before);
   }
 
   get editModeUnavailableReason() {
@@ -333,7 +439,50 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
   syncCameraControls = ({ value: dragging }) => {
     this.controls.enabled = !dragging;
+    if (dragging) {
+      const session = this.vertexEdit;
+      const object = session?.mesh ?? this.transformControls.object;
+      if (!object) return;
+      const before = session ? object.geometry : this.readTransform(object);
+      this.transformGesture = { object, session, before };
+    } else if (this.transformGesture) {
+      this.finishTransform();
+    }
+    this.dispatchEvent({ type: 'selection-changed' });
   };
+
+  readTransform(object) {
+    return [object.position.clone(), object.quaternion.clone(), object.scale.clone()];
+  }
+
+  finishTransform() {
+    const { object, session, before } = this.transformGesture;
+    this.transformGesture = null;
+    if (session) {
+      if (object.geometry !== before) {
+        const position = object.geometry.getAttribute('position').array;
+        const original = before.getAttribute('position').array;
+        if (position.every((value, index) => value === original[index])) {
+          object.geometry.dispose();
+          object.geometry = before;
+          session.syncPoints();
+          session.syncPivot();
+        } else {
+          this.recordGeometryChange(object, before);
+        }
+      }
+      return;
+    }
+    const after = this.readTransform(object);
+    if (after.every((value, index) => value.equals(before[index]))) return;
+    const apply = ([position, quaternion, scale]) => {
+      object.position.copy(position);
+      object.quaternion.copy(quaternion);
+      object.scale.copy(scale);
+      this.restoreTransformedSelection(object);
+    };
+    this.recordOperation({ undo: () => apply(before), redo: () => apply(after) });
+  }
 
   /**
    * @param {number} width
@@ -348,6 +497,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   // SAVE AND LOAD METHODS:
 
   save() {
+    this.transformControls.dragging = false;
     const activeDocument = this.activeDocument;
     const { scene, revision } = activeDocument;
     const children = scene.children;
@@ -406,6 +556,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   }
 
   confirmReplacement() {
+    this.transformControls.dragging = false;
     return !this.activeDocument.dirty ||
       window.confirm('The current scene has unsaved changes. Discard them?');
   }
@@ -460,6 +611,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.selectedObject = null;
     this.transformControls.detach();
     this.transformControls.dragging = false;
+    this.clearHistory();
     this.resetTransformSettings();
 
     // Clear pending orbit damping before restoring the starting camera pose.
@@ -492,16 +644,55 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
   /** @param {THREE.Object3D} object */
   addObject(object) {
-    this.scene.add(object);
-    if (object instanceof THREE.Light) this.addLightHelper(object);
+    this.insertObject(object, this.scene, object);
+  }
+
+  insertObject(object, parent, selection) {
+    this.transformControls.dragging = false;
+    const previous = this.selectedObject;
+    const index = parent.children.length;
+    const attach = () => {
+      this.attachSceneObject(object, parent, index);
+      this.restoreSelection(selection);
+    };
+    attach();
+    this.recordOperation({
+      object,
+      undo: () => {
+        this.detachSceneObject(object);
+        this.restoreSelection(previous);
+      },
+      redo: attach,
+    });
+  }
+
+  attachSceneObject(object, parent, index) {
+    parent.add(object);
+    parent.children.splice(index, 0, parent.children.pop());
+    object.traverse((child) => {
+      if (child.isLight) this.addLightHelper(child);
+    });
     getConfigCallbacks(this).WIREFRAME_MODE();
-    this.setSelectedObject(object);
-    this.markDocumentChanged();
+  }
+
+  detachSceneObject(object) {
+    const removed = new Set();
+    object.traverse((child) => removed.add(child));
+    if (removed.has(this.selectedObject)) this.setSelectedObject(null);
+    object.removeFromParent();
+    for (const helper of this.lightHelpers) {
+      if (!removed.has(helper.light)) continue;
+      this.lightHelpers.delete(helper);
+      helper.removeFromParent();
+      helper.dispose();
+    }
+    if (removed.has(this.skyLight)) this.activeDocument.skyLight = undefined;
   }
 
   setSelectedObject(object) {
     const selection = object?.light ?? object ?? null;
     if (selection === this.selectedObject) return;
+    this.transformControls.dragging = false;
     this.stopVertexEditing();
     this.selectedObject = selection;
     this.syncTransformMode();
@@ -548,28 +739,31 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
       ? source.material.map((material) => material.clone())
       : source.material.clone();
     if (source instanceof THREE.SkinnedMesh && source.skeleton) copySkin(source, copy);
-    source.parent.add(copy);
-    this.setSelectedObject(copy);
-    this.markDocumentChanged();
+    this.insertObject(copy, source.parent, copy);
   }
 
   removeSelectedObject() {
     const object = this.selectedObject;
-    if (!object) return;
+    if (!object?.parent) return;
 
-    this.setSelectedObject(null);
-    const removed = new Set();
-    object.traverse((child) => removed.add(child));
-    object.removeFromParent();
-    for (const helper of this.lightHelpers) {
-      if (!removed.has(helper.light)) continue;
-      this.lightHelpers.delete(helper);
-      helper.removeFromParent();
-      helper.dispose();
-    }
-    if (removed.has(this.skyLight)) this.activeDocument.skyLight = undefined;
-    disposeScene(object, this.scene);
-    this.markDocumentChanged();
+    this.transformControls.dragging = false;
+    const parent = object.parent;
+    const index = parent.children.indexOf(object);
+    const skyLight = this.skyLight;
+    const remove = () => {
+      this.detachSceneObject(object);
+      this.setSelectedObject(null);
+    };
+    remove();
+    this.recordOperation({
+      object,
+      undo: () => {
+        this.attachSceneObject(object, parent, index);
+        this.activeDocument.skyLight = skyLight;
+        this.restoreSelection(object);
+      },
+      redo: remove,
+    });
   }
 
   loadFbx() {
@@ -594,13 +788,10 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
       try {
         const object = new FBXLoader(manager).parse(contents, '');
         object.name ||= 'FBX_Object';
-        this.scene.add(object);
         object.traverse((child) => {
-          if (child.isLight) this.addLightHelper(child);
           if (child.isMesh) child.geometry.userData[fbxMeshKey] = true;
         });
-        getConfigCallbacks(this).WIREFRAME_MODE();
-        this.markDocumentChanged();
+        this.insertObject(object, this.scene, this.selectedObject);
       } catch (error) {
         releaseTextures();
         throw error;

@@ -66,6 +66,11 @@ async function addItem(page, type, color) {
   await page.getByRole('button', { name: 'Add to scene', exact: true }).press('Enter');
 }
 
+async function editCommand(page, name) {
+  await menu(page, 'Edit').click();
+  await page.getByRole('button', { name, exact: true }).click();
+}
+
 async function upload(page, label, file) {
   await menu(page, 'File').click();
   const chooser = page.waitForEvent('filechooser');
@@ -179,8 +184,64 @@ test('duplicates a mesh independently and applies the chosen snap step during mo
   await page.waitForFunction(() => window.current().transformControls.translationSnap === null);
   const free = await dragCopy();
   assert.ok(free > 0 && !Number.isInteger(free / 0.25));
+  await editCommand(page, 'Undo');
+  assert.equal(await page.evaluate(() => window.current().selectedObject.position.x), 0);
+  await editCommand(page, 'Redo');
+  assert.equal(await page.evaluate(() => window.current().selectedObject.position.x), free);
   await snap.click();
   await page.waitForFunction(() => window.current().transformControls.translationSnap === 0.25);
+});
+
+test('replays scene changes in order and clears redo on a new edit or scene replacement', async (t) => {
+  const page = await openEditor(t);
+  const undo = page.getByRole('button', { name: 'Undo', exact: true });
+  const redo = page.getByRole('button', { name: 'Redo', exact: true });
+  const canvas = page.locator('canvas');
+  const selection = () => page.evaluate(() => window.current().selectedObject?.name ?? null);
+  const names = () => page.evaluate(() => window.current().sceneItems().map((item) => item.name));
+
+  await menu(page, 'Edit').click();
+  assert.ok(await undo.isDisabled());
+  assert.ok(await redo.isDisabled());
+  await page.keyboard.press('Escape');
+  await addItem(page, 'cube');
+  await editCommand(page, 'Duplicate selection');
+  const position = page.getByRole('spinbutton', { name: 'Position X', exact: true });
+  await position.fill('3');
+  await editCommand(page, 'Delete selection');
+  assert.equal(await selection(), null);
+
+  await editCommand(page, 'Undo');
+  assert.equal(await selection(), 'cube Copy');
+  assert.equal(await position.inputValue(), '3');
+  await canvas.press('Control+z');
+  assert.equal(await position.inputValue(), '0');
+  await canvas.press('Control+z');
+  assert.deepEqual(await names(), ['ThrlenderSkyLight', 'cube']);
+  assert.equal(await selection(), 'cube');
+  await canvas.press('Control+z');
+  assert.deepEqual(await names(), ['ThrlenderSkyLight']);
+  assert.equal(await selection(), null);
+
+  await canvas.press('Control+Shift+z');
+  await canvas.press('Control+y');
+  await editCommand(page, 'Redo');
+  assert.equal(await position.inputValue(), '3');
+  await editCommand(page, 'Redo');
+  assert.equal(await selection(), null);
+  await editCommand(page, 'Undo');
+  await position.fill('7');
+  await menu(page, 'Edit').click();
+  assert.ok(await redo.isDisabled());
+  await page.keyboard.press('Escape');
+
+  await editCommand(page, 'Undo');
+  await menu(page, 'File').click();
+  await page.getByRole('button', { name: 'New Scene', exact: true }).click();
+  await menu(page, 'Edit').click();
+  assert.ok(await undo.isDisabled());
+  assert.ok(await redo.isDisabled());
+  assert.deepEqual(await names(), ['ThrlenderSkyLight']);
 });
 
 test('editor commands preserve camera, selection, shapes, lights and local files', async (t) => {
@@ -949,6 +1010,16 @@ test('edits one FBX mesh from the hierarchy and reopens it with its materials an
   assert.deepEqual(edited.matrix, before.matrix);
   assert.deepEqual(edited.sibling, afterMove.sibling);
 
+  await editCommand(page, 'Undo');
+  assert.deepEqual(await snapshot(), afterMove);
+  await editCommand(page, 'Undo');
+  assert.deepEqual(await snapshot(), before);
+  assert.equal(await row('Panel').getAttribute('aria-pressed'), 'true');
+  await editCommand(page, 'Redo');
+  assert.deepEqual(await snapshot(), afterMove);
+  await editCommand(page, 'Redo');
+  assert.deepEqual(await snapshot(), edited);
+
   await menu(page, 'File').click();
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save THRL', exact: true }).click();
@@ -958,6 +1029,10 @@ test('edits one FBX mesh from the hierarchy and reopens it with its materials an
   await checkDeformers();
   await row('Panel').click();
   assert.deepEqual(await snapshot(), JSON.parse(JSON.stringify(edited)));
+  await menu(page, 'Edit').click();
+  assert.ok(await page.getByRole('button', { name: 'Undo', exact: true }).isDisabled());
+  assert.ok(await page.getByRole('button', { name: 'Redo', exact: true }).isDisabled());
+  await page.keyboard.press('Escape');
   await edit.click();
   await page.getByRole('button', { name: 'Faces', exact: true }).click();
   const cap = [center[0], center[1], edited.geometry.data.attributes.position.array[2]];

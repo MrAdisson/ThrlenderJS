@@ -43,25 +43,32 @@ function NumberField({ label, value, change, axis }: {
   );
 }
 
-function VectorFields({ label, vector, refresh }: { label: string; vector: Vector3; refresh: () => void }) {
+type TransformAxis = 'x' | 'y' | 'z';
+
+function VectorFields({ label, vector, change }: {
+  label: string;
+  vector: Vector3;
+  change: (axis: TransformAxis, value: number) => void;
+}) {
   return (
     <fieldset>
       <legend>{label}</legend>
       <div className="vector">
         {(['x', 'y', 'z'] as const).map((axis) => (
           <NumberField key={axis} axis={axis} label={`${label} ${axis.toUpperCase()}`}
-            value={vector[axis]} change={(value) => { vector[axis] = value; refresh(); }} />
+            value={vector[axis]} change={(value) => change(axis, value)} />
         ))}
       </div>
     </fieldset>
   );
 }
 
-export function Properties({ object, isSceneSky, refresh, setVisible, showTransform }: {
+export function Properties({ object, isSceneSky, refresh, setVisible, setTransform, showTransform }: {
   object: Object3D;
   isSceneSky: boolean;
   showTransform: boolean;
   refresh: () => void;
+  setTransform: (field: 'position' | 'scale', axis: TransformAxis, value: number) => void;
   setVisible: (visible: boolean) => void;
 }) {
   const light = object instanceof Light ? object : undefined;
@@ -86,8 +93,8 @@ export function Properties({ object, isSceneSky, refresh, setVisible, showTransf
       </label>
       {showTransform && <fieldset className="property-group">
         <legend>Transform</legend>
-        <VectorFields label="Position" vector={object.position} refresh={refresh} />
-        {!light && <VectorFields label="Scale" vector={object.scale} refresh={refresh} />}
+        <VectorFields label="Position" vector={object.position} change={(axis, value) => setTransform('position', axis, value)} />
+        {!light && <VectorFields label="Scale" vector={object.scale} change={(axis, value) => setTransform('scale', axis, value)} />}
       </fieldset>}
       {materialColor instanceof Color && <fieldset className="property-group">
         <legend>Material</legend>

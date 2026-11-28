@@ -4,6 +4,15 @@ const init = (thrlender) => {
   const { config, transformSettings } = thrlender;
 
   const onKeyDown = (event) => {
+    if (!event.altKey && (event.ctrlKey || event.metaKey)) {
+      const key = event.key.toLowerCase();
+      if (key === 'z' || (event.ctrlKey && !event.shiftKey && key === 'y')) {
+        event.preventDefault();
+        if (key === 'y' || event.shiftKey) thrlender.redo();
+        else thrlender.undo();
+      }
+      return;
+    }
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey && event.key === 'Tab') return;
     if (event.code === 'Space') {
       event.preventDefault();
@@ -55,10 +64,16 @@ const init = (thrlender) => {
       // Keep the scene shortcut, and let Tab continue into the editor controls.
     }
   };
+  const onPointerCancel = () => {
+    thrlender.transformControls.dragging = false;
+    thrlender.transformControls.axis = null;
+  };
   canvas.addEventListener('keydown', onKeyDown);
+  canvas.addEventListener('lostpointercapture', onPointerCancel);
 
   return () => {
     canvas.removeEventListener('keydown', onKeyDown);
+    canvas.removeEventListener('lostpointercapture', onPointerCancel);
   };
 };
 
