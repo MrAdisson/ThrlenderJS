@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { selectionnableObjectsTypes } from './utils/config';
 
 /**
  * @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender
@@ -17,10 +16,24 @@ const init = (thrlender) => {
     mouse.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
     mouse.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
     raycaster.setFromCamera(mouse, thrlender.camera);
-    const intersects = raycaster
-      .intersectObjects(thrlender.scene.children)
-      .filter(({ object }) => selectionnableObjectsTypes.includes(object.name) || object.type === 'Group');
-    const hit = intersects[0]?.object;
+    const pickable = [];
+    function collect(parent) {
+      for (const object of thrlender.sceneItems(parent)) {
+        if (!object.visible) continue;
+        pickable.push(object);
+        collect(object);
+      }
+    }
+    collect(thrlender.scene);
+    const hits = raycaster.intersectObjects(pickable, false);
+    // Some light helpers use child meshes and lines for their pickable geometry.
+    for (const helper of thrlender.lightHelpers) {
+      if (!helper.visible) continue;
+      const hit = raycaster.intersectObject(helper).find(({ object }) => thrlender.isVisible(object));
+      if (hit) hits.push({ ...hit, object: helper.light });
+    }
+    hits.sort((a, b) => a.distance - b.distance);
+    const hit = hits[0]?.object;
     thrlender.setSelectedObject(hit);
   };
 

@@ -7,15 +7,17 @@ export class SceneDocument {
   /** @param {Scene} scene */
   constructor(scene) {
     this.scene = scene;
+    const skyLights = [];
+    scene.traverse((object) => {
+      if (object instanceof HemisphereLight) skyLights.push(object);
+    });
+    this.skyLight = skyLights.find((light) => light.userData.thrlenderSkyLight) ??
+      skyLights.find((light) => light.name === 'ThrlenderSkyLight' && !light.userData.thrlenderRenamed);
+    if (this.skyLight) this.skyLight.userData.thrlenderSkyLight = true;
   }
 
   get dirty() {
     return this.revision !== this.savedRevision;
-  }
-
-  get skyLight() {
-    const light = this.scene.getObjectByName('ThrlenderSkyLight');
-    return light instanceof HemisphereLight ? light : undefined;
   }
 
   static create() {

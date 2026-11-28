@@ -46,6 +46,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   }
   fileEvents = new AbortController();
   readers = new Set();
+  /** @type {Set<THREE.Object3D & { light: THREE.Light }>} */
+  lightHelpers = new Set();
   objectUrls = new Set();
   /** @type {THREE.Object3D | null} */
   selectedObject = null;
@@ -56,7 +58,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.initRenderer();
     this.initControls();
     this.initGrid();
-    this.addLightHelper(this.skyLight);
+    if (this.skyLight) this.addLightHelper(this.skyLight);
     this.initTransformControls();
     this.initAxesHelper();
     host.appendChild(this.renderer.domElement);
@@ -110,7 +112,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     }
     if (!helper) return;
     helper.name = light.name + 'Helper';
-    helper.visible = this.config.LIGHTS_LIGHT_HELPERS_VISIBLE;
+    helper.visible = this.config.LIGHTS_LIGHT_HELPERS_VISIBLE && this.isVisible(light);
+    this.lightHelpers.add(helper);
     this.scene.add(helper);
   }
 
@@ -126,10 +129,51 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
   /** @param {THREE.Object3D | null} object */
   updateLightHelper(object) {
-    if (!object?.isLight) return;
-    object.updateMatrixWorld();
-    for (const helper of this.scene.children) {
-      if (helper.light === object) helper.update();
+    if (!object) return;
+    object.updateWorldMatrix(true, true);
+    object.traverse((child) => {
+      if (!child.isLight) return;
+      for (const helper of this.lightHelpers) {
+        if (helper.light === child) helper.update();
+      }
+    });
+  }
+
+  /** @param {THREE.Object3D} parent */
+  sceneItems(parent = this.scene) {
+    return parent.children.filter((object) =>
+      !object.isCamera && object !== this.gridHelper && object !== this.axesHelper &&
+      object !== this.transformControls && !this.lightHelpers.has(object)
+    );
+  }
+
+  /** @param {THREE.Object3D} object */
+  isVisible(object) {
+    for (let ancestor = object; ancestor; ancestor = ancestor.parent) {
+      if (!ancestor.visible) return false;
+    }
+    return true;
+  }
+
+  syncLightHelpers() {
+    for (const helper of this.lightHelpers) {
+      helper.visible = this.config.LIGHTS_LIGHT_HELPERS_VISIBLE && this.isVisible(helper.light);
+    }
+  }
+
+  /** @param {THREE.Object3D} object @param {boolean} visible */
+  setItemVisibility(object, visible) {
+    object.visible = visible;
+    this.syncLightHelpers();
+    this.syncSelectionGizmo();
+    this.markDocumentChanged();
+  }
+
+  syncSelectionGizmo() {
+    if (this.selectedObject && this.isVisible(this.selectedObject)) {
+      this.transformControls.attach(this.selectedObject);
+    } else {
+      this.transformControls.detach();
     }
   }
 
@@ -195,7 +239,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     let jsonScene;
     try {
       scene.children = children.filter((child) =>
-        child !== this.axesHelper && child !== this.gridHelper && child !== this.transformControls && !child.light?.isLight);
+        child !== this.axesHelper && child !== this.gridHelper && child !== this.transformControls && !this.lightHelpers.has(child));
       const data = scene.toJSON();
       // Keep the camera entry used by older THRL exports.
       data.object.children = [...(data.object.children ?? []), this.camera.toJSON().object];
@@ -260,6 +304,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.readLocalFile('.thrl', (reader, file) => reader.readAsText(file), async (contents) => {
       if (this.activeDocument !== original) return;
       let scene;
+      let next;
       try {
         const data = JSON.parse(contents);
         const root = data?.object;
@@ -267,8 +312,13 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
             (root.children !== undefined && !Array.isArray(root.children))) {
           throw new Error('Expected a Three.js scene');
         }
+        // Older THRL files can include editor light helpers.
+        const helperTypes = new Set(['PointLightHelper', 'SpotLightHelper', 'DirectionalLightHelper']);
+        if (root.children) root.children = root.children.filter((child) => !helperTypes.has(child.type));
         scene = await new THREE.ObjectLoader().parseAsync(data);
+        next = new SceneDocument(scene);
       } catch {
+        if (scene) disposeScene(scene);
         if (!this.fileEvents.signal.aborted && this.activeDocument === original) {
           window.alert('This file could not be opened as a THRL scene.');
         }
@@ -279,7 +329,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
         disposeScene(scene);
         return;
       }
-      this.replaceDocument(new SceneDocument(scene));
+      this.replaceDocument(next);
     }, () => {
       if (this.activeDocument === original) window.alert('This THRL file could not be read.');
     });
@@ -301,13 +351,17 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.controls.enableDamping = this.config.ENABLE_DAMPING;
 
     const scene = next.scene;
-    const lights = scene.children.filter((child) => child.isLight);
+    const lights = [];
+    scene.traverse((child) => {
+      if (child.isLight) lights.push(child);
+    });
     const helperNames = new Set(lights.map((light) => light.name + 'Helper'));
     for (const child of [...scene.children]) {
       if ((child.type === 'Object3D' && helperNames.has(child.name)) ||
           (child.isCamera && child.name === this.camera.name)) child.removeFromParent();
     }
 
+    this.lightHelpers.clear();
     this.activeDocument = next;
     scene.add(this.gridHelper, this.axesHelper, this.transformControls);
     for (const light of lights) this.addLightHelper(light);
@@ -331,13 +385,12 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     const selection = object?.light ?? object ?? null;
     if (selection === this.selectedObject) return;
     this.selectedObject = selection;
-    if (selection) this.transformControls.attach(selection);
-    else this.transformControls.detach();
+    this.syncSelectionGizmo();
     this.dispatchEvent({ type: 'selection-changed' });
   }
 
   focusSelection() {
-    if (this.selectedObject) this.controls.target.copy(this.selectedObject.position);
+    this.selectedObject?.getWorldPosition(this.controls.target);
   }
 
   removeSelectedObject() {
@@ -345,12 +398,16 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     if (!object) return;
 
     this.setSelectedObject(null);
+    const removed = new Set();
+    object.traverse((child) => removed.add(child));
     object.removeFromParent();
-    for (const helper of [...this.scene.children]) {
-      if (helper.light !== object) continue;
+    for (const helper of this.lightHelpers) {
+      if (!removed.has(helper.light)) continue;
+      this.lightHelpers.delete(helper);
       helper.removeFromParent();
       helper.dispose();
     }
+    if (removed.has(this.skyLight)) this.activeDocument.skyLight = undefined;
     disposeScene(object, this.scene);
     this.markDocumentChanged();
   }
@@ -376,8 +433,11 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
       try {
         const object = new FBXLoader(manager).parse(contents, '');
-        object.name = 'FBX_Object';
+        object.name ||= 'FBX_Object';
         this.scene.add(object);
+        object.traverse((child) => {
+          if (child.isLight) this.addLightHelper(child);
+        });
         getConfigCallbacks(this).WIREFRAME_MODE();
         this.markDocumentChanged();
       } catch (error) {

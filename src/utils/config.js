@@ -16,20 +16,6 @@ export const createTransformSettings = () => ({
   SNAP_TO_GRID: true,
 });
 
-export const selectionnableObjectsTypes = [
-  'cube',
-  'sphere',
-  'cylinder',
-  'cone',
-  'plane',
-  'pointLightHelper',
-  'spotLightHelper',
-  'directionalLightHelper',
-  'ambientLightHelper',
-  'ThrlenderSkyLightHelper',
-  'FBX_Object',
-];
-
 /** @param {import('../ThrlenderEngine').ThrlenderEngine} thrlender */
 export const getConfigCallbacks = (thrlender) => {
   const { config, transformSettings } = thrlender;
@@ -96,19 +82,7 @@ export const getConfigCallbacks = (thrlender) => {
           })();
     },
     LIGHTS_LIGHT_HELPERS_VISIBLE: () => {
-      // GET ALL LIGHT HELPERS IN SCENE.CHILDREN
-      const helpers = thrlender.scene.children.filter((obj) => obj.type.includes('LightHelper'));
-      config.LIGHTS_LIGHT_HELPERS_VISIBLE
-        ? (() => {
-            helpers.forEach((helper) => {
-              helper.visible = true;
-            });
-          })()
-        : (() => {
-            helpers.forEach((helper) => {
-              helper.visible = false;
-            });
-          })();
+      thrlender.syncLightHelpers();
     },
   };
 };

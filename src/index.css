@@ -41,7 +41,7 @@ html, body, #root, .editor {
 button, input, select { font: inherit; }
 button, select, summary { cursor: pointer; }
 input[type="checkbox"], input[type="range"] { accent-color: var(--accent); margin: 0; }
-button, select, input[type="number"] {
+button, select, input[type="number"], input[type="text"] {
   box-sizing: border-box;
   min-height: 40px;
   color: inherit;
@@ -191,6 +191,26 @@ kbd { color: var(--muted); font-size: 11px; margin-left: 4px; }
   background: #181e25;
   border-bottom: 1px solid var(--border);
 }
+.scene-list {
+  max-height: 26dvh;
+  overflow: auto;
+  padding: 6px var(--space);
+}
+.scene-items { list-style: none; padding: 0; margin: 0; }
+.scene-items .scene-items { padding-left: 10px; }
+.scene-item { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px; margin-block: 2px; }
+.scene-item button { min-height: 32px; }
+.scene-expand { grid-column: 1; padding: 2px; }
+.scene-select {
+  grid-column: 2;
+  padding: 3px 8px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scene-select[data-hidden="true"] { text-decoration: line-through; }
+.type-field input { min-width: 0; width: 100%; }
 .panel-body { display: grid; gap: var(--space); padding: var(--space); }
 button.primary { background: var(--accent); color: #142721; font-weight: 650; border-color: transparent; }
 button.primary:not(:disabled):hover { background: #a4ebdd; }

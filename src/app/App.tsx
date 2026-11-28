@@ -4,6 +4,7 @@ import type { ThrlenderEngine } from '../ThrlenderEngine';
 import { mountEditor } from './mountEditor';
 import { addItem, itemLabels, type ItemType } from './addItem';
 import { ColorField, Properties } from './Properties';
+import { SceneTree } from './SceneTree';
 
 const tools = [
   { value: 'translate', label: 'Move', shortcut: 'T', icon: 'M12 2v20M2 12h20M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3m14-6 3 3-3 3' },
@@ -183,11 +184,13 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
         ))}
       </div>
       <aside className="properties-panel panel" hidden={!inspectorOpen} aria-labelledby="properties-heading">
+        <SceneTree key={engine.scene?.uuid} engine={engine} />
         <div className="panel-heading"><h2 id="properties-heading">Inspector</h2></div>
         <div className="panel-body">
           {selectedObject
-            ? <Properties key={selectedObject.uuid} object={selectedObject} refresh={engine.editSelection} />
-            : <p className="empty-selection">Select an item in the viewport to edit its properties.</p>}
+            ? <Properties key={selectedObject.uuid} object={selectedObject} refresh={engine.editSelection}
+                setVisible={(visible) => engine.setItemVisibility(selectedObject, visible)} />
+            : <p className="empty-selection">Select an item to edit its properties.</p>}
         </div>
       </aside>
     </>
