@@ -17,11 +17,13 @@ export function mountEditor(host: HTMLElement, refresh: () => void) {
     cleanup.push(eventManager.init(engine));
     engine.addEventListener('selection-changed', refresh);
     engine.addEventListener('scene-loaded', refresh);
+    engine.addEventListener('scene-changed', refresh);
     const transformControls = engine.transformControls!;
     transformControls.addEventListener('objectChange', refresh);
     cleanup.push(() => {
       engine.removeEventListener('selection-changed', refresh);
       engine.removeEventListener('scene-loaded', refresh);
+      engine.removeEventListener('scene-changed', refresh);
       transformControls.removeEventListener('objectChange', refresh);
     });
 
