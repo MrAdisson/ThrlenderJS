@@ -6,7 +6,6 @@ export class VertexEditSession {
   selected = new Set();
   pivot = new Object3D();
   previousPosition = new Vector3();
-  edited = false;
   selectionMode = 'vertices';
   selectedFace = undefined;
   faceDescription = null;
@@ -180,13 +179,12 @@ export class VertexEditSession {
     this.syncFaceHighlight();
   }
 
-  commitExtrusion(replaceGeometry) {
+  commitExtrusion() {
     if (!this.preview) return false;
     const geometry = this.preview;
     this.preview = null;
     this.previewing = false;
-    replaceGeometry(geometry);
-    this.edited = true;
+    this.mesh.geometry = geometry;
     this.faces = logicalFaces(geometry);
     this.topology = new VertexTopology(geometry);
     this.faceDescription = describeFace(geometry, this.topology, this.faces, this.selectedFace);
@@ -211,10 +209,7 @@ export class VertexEditSession {
     const delta = toMesh(this.pivot.position).sub(toMesh(this.previousPosition));
     this.previousPosition.copy(this.pivot.position);
     if (delta.lengthSq() === 0) return false;
-    if (!this.edited) {
-      prepareGeometry(this.topology.editableCopy(this.mesh.geometry));
-      this.edited = true;
-    }
+    prepareGeometry();
     this.topology.translate(this.mesh.geometry, this.selected, delta);
     this.syncPoints();
     return true;

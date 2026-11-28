@@ -50,6 +50,7 @@ With Node.js 20 or newer, run `npm test` to check the bundles and editor behavio
 - `Space` enables or disables the transform gizmo; `G` toggles the grid, `A` toggles the axes and `W` toggles wireframe display.
 - `F` or **View → Focus selection** moves the camera to frame the selected item.
 - When the viewport has focus, **Tab** selects the nearest eligible item and moves focus to the editor controls.
+- Use **Edit → Undo** and **Edit → Redo** for object additions (including FBX imports), deletions, duplications, transforms, vertex moves and applied extrusions. With the viewport focused, use **Ctrl/Cmd+Z** and **Ctrl/Cmd+Shift+Z** or **Ctrl+Y** to redo. Opening or creating a scene clears its history.
 - Use **Add** to choose a shape or light and its color. Use **View** to toggle the Inspector and adjust viewport settings. Open **Scene Settings** to edit the built-in sky light without selecting it.
 - Use **File** to create, open or save a THRL scene or import an FBX model.
 

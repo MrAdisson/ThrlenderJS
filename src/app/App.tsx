@@ -116,6 +116,10 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
           <details className="command-menu" name="scene-command">
             <summary>Edit</summary>
             <div className="menu-panel">
+              <button disabled={!engine.canUndo} onClick={command(() => engine.undo())}
+                aria-keyshortcuts="Control+Z Meta+Z">Undo</button>
+              <button disabled={!engine.canRedo} onClick={command(() => engine.redo())}
+                aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y">Redo</button>
               <button disabled={!engine.canDuplicateSelection} onClick={command(() => engine.duplicateSelection())}>
                 Duplicate selection
               </button>
@@ -263,6 +267,7 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
           {selectedObject
             ? <Properties key={selectedObject.uuid} object={selectedObject} isSceneSky={selectedObject === skyLight}
                 refresh={engine.editSelection} showTransform={!vertexEdit}
+                setTransform={(field, axis, value) => engine.setTransformValue(selectedObject, field, axis, value)}
                 setVisible={(visible) => engine.setItemVisibility(selectedObject, visible)} />
             : <p className="empty-selection">Select an item to edit its properties.</p>}
         </div>
