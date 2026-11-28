@@ -12,7 +12,9 @@ export function sceneItemName(object: Object3D) {
 
 export function SceneTree({ engine }: { engine: ThrlenderEngine }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const selected = engine.selectedObject;
+  const { activeDocument, selectedObject: selected } = engine;
+
+  useEffect(() => setExpanded(new Set()), [activeDocument]);
 
   useEffect(() => {
     if (!selected?.parent || selected.parent === engine.scene) return;

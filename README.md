@@ -9,7 +9,7 @@ Thrlender is a browser based 3D scene editor inspired by Blender. It uses Three.
 - Select items in the viewport or in the **Scene** hierarchy. Expand imported groups to select their children.
 - Move, rotate or scale the selection with the transform controls. Use **Inspector** to rename items, change visibility and edit their properties. Use **Edit** to delete the selection.
 - Orbit around the scene with the camera controls. Adjust the grid, axes, wireframe display, transform snapping and sky light using View and the transform toolbar.
-- Save a scene by downloading a `.thrl` file, or load a `.thrl` file to replace the current scene. Names and visibility are saved with the scene.
+- Create a new scene, save it by downloading a `.thrl` file, or open a local `.thrl` file. New Scene and Open THRL ask before discarding unsaved changes. Names and visibility are saved with the scene.
 - Import a local `.fbx` model into the current scene.
 
 ## Getting started
@@ -48,7 +48,7 @@ With Node.js 20 or newer, run `npm test` to check the bundles and editor behavio
 - `F` points the camera controls at the selected item.
 - When the viewport has focus, **Tab** selects the nearest eligible item and moves focus to the editor controls.
 - Use **Add** to choose a shape or light and its color. Use **View** to toggle the Inspector and adjust lighting or viewport settings.
-- Use **File** to open or save a THRL scene or import an FBX model.
+- Use **File** to create, open or save a THRL scene or import an FBX model.
 
 ## License
 

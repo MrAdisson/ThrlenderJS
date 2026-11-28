@@ -1,28 +1,28 @@
 /** @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender */
 const init = (thrlender) => {
   const canvas = thrlender.renderer.domElement;
-  const config = thrlender.config;
+  const { config, transformSettings } = thrlender;
 
   const onKeyDown = (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey && event.key === 'Tab') return;
     if (event.code === 'Space') {
       event.preventDefault();
-      config.TRANSFORM_CONTROLS_ENABLED = !config.TRANSFORM_CONTROLS_ENABLED;
+      transformSettings.TRANSFORM_CONTROLS_ENABLED = !transformSettings.TRANSFORM_CONTROLS_ENABLED;
     }
     //   S TOGGLE SCALE MODE
     if (event.key === 's') {
       event.preventDefault();
-      config.TRANSFORM_CONTROLS_MODE = 'scale';
+      transformSettings.TRANSFORM_CONTROLS_MODE = 'scale';
     }
     //   R TOGGLE ROTATE MODE
     if (event.key === 'r') {
       event.preventDefault();
-      config.TRANSFORM_CONTROLS_MODE = 'rotate';
+      transformSettings.TRANSFORM_CONTROLS_MODE = 'rotate';
     }
     //   T TOGGLE TRANSLATE MODE
     if (event.key === 't') {
       event.preventDefault();
-      config.TRANSFORM_CONTROLS_MODE = 'translate';
+      transformSettings.TRANSFORM_CONTROLS_MODE = 'translate';
     }
     //   G TOGGLE GRID
     if (event.key === 'g') {

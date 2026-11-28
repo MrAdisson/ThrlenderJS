@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState, type MouseEvent } from 'react';
-import { Color, HemisphereLight } from 'three';
+import { Color } from 'three';
 import type { ThrlenderEngine } from '../ThrlenderEngine';
 import { mountEditor } from './mountEditor';
 import { addItem, itemLabels, type ItemType } from './addItem';
@@ -41,10 +41,18 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
         if (openMenu) openMenu.open = false;
       }
     }
+    function resetAddFields() {
+      setItem('cube');
+      setColor('#ffffff');
+    }
     document.addEventListener('pointerdown', dismissOutside);
-    return () => document.removeEventListener('pointerdown', dismissOutside);
-  }, []);
-  const { config, selectedObject } = engine;
+    engine.addEventListener('document-replaced', resetAddFields);
+    return () => {
+      document.removeEventListener('pointerdown', dismissOutside);
+      engine.removeEventListener('document-replaced', resetAddFields);
+    };
+  }, [engine]);
+  const { activeDocument, config, selectedObject, skyLight, transformSettings } = engine;
   const colorHex = (value: string) => '#' + new Color(value).getHexString();
 
   function setConfig<K extends keyof typeof config>(key: K, value: typeof config[K]) {
@@ -52,13 +60,11 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
     refresh();
   }
 
-  function editSelection() {
-    engine.updateSelectedHelper();
-    if (selectedObject instanceof HemisphereLight && selectedObject === engine.skyLight) {
-      config.LIGHTS_SKY_LIGHT_INTENSITY = selectedObject.intensity;
-      config.LIGHTS_SKY_LIGHT_COLOR = '#' + selectedObject.color.getHexString();
-    }
-    refresh();
+  function editSky(change: (light: NonNullable<typeof skyLight>) => void) {
+    if (!skyLight) return;
+    change(skyLight);
+    engine.updateLightHelper(skyLight);
+    engine.markDocumentChanged();
   }
 
   function command(action: () => void) {
@@ -69,9 +75,10 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
   }
 
   function changeTool(value: string) {
-    if (value === 'gizmo') setConfig('TRANSFORM_CONTROLS_ENABLED', !config.TRANSFORM_CONTROLS_ENABLED);
-    else if (value === 'snap') setConfig('SNAP_TO_GRID', !config.SNAP_TO_GRID);
-    else setConfig('TRANSFORM_CONTROLS_MODE', value);
+    if (value === 'gizmo') transformSettings.TRANSFORM_CONTROLS_ENABLED = !transformSettings.TRANSFORM_CONTROLS_ENABLED;
+    else if (value === 'snap') transformSettings.SNAP_TO_GRID = !transformSettings.SNAP_TO_GRID;
+    else transformSettings.TRANSFORM_CONTROLS_MODE = value;
+    refresh();
   }
 
   return (
@@ -91,10 +98,15 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
           <details className="command-menu" name="scene-command">
             <summary>File</summary>
             <div className="menu-panel">
+              <button onClick={command(() => engine.newScene())}>New Scene</button>
+              <button onClick={command(() => engine.load())}>Open THRL</button>
               <button onClick={command(() => {
-                if (window.confirm('Opening a THRL file replaces the current scene. Open a file?')) engine.load();
-              })}>Open THRL</button>
-              <button onClick={command(() => engine.save())}>Save THRL</button>
+                try {
+                  engine.save();
+                } catch {
+                  window.alert('The THRL download could not be started.');
+                }
+              })}>Save THRL</button>
               <button onClick={command(() => engine.loadFbx())}>Import FBX</button>
             </div>
           </details>
@@ -141,26 +153,27 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
               <Toggle label="Show light helpers" checked={config.LIGHTS_LIGHT_HELPERS_VISIBLE}
                 change={(value) => setConfig('LIGHTS_LIGHT_HELPERS_VISIBLE', value)} />
               <label className="range-field">
-                <span>Sky intensity <span aria-hidden="true">{config.LIGHTS_SKY_LIGHT_INTENSITY.toFixed(2)}</span></span>
+                <span>Sky intensity <span aria-hidden="true">{(skyLight?.intensity ?? 0).toFixed(2)}</span></span>
                 <input type="range" aria-label="Sky intensity" min="0" max="2" step="0.01"
-                  value={config.LIGHTS_SKY_LIGHT_INTENSITY} disabled={!engine.skyLight}
-                  onChange={(event) => setConfig('LIGHTS_SKY_LIGHT_INTENSITY', event.currentTarget.valueAsNumber)} />
+                  value={skyLight?.intensity ?? 0} disabled={!skyLight}
+                  onChange={(event) => editSky((light) => { light.intensity = event.currentTarget.valueAsNumber; })} />
               </label>
-              <ColorField label="Sky color" value={colorHex(config.LIGHTS_SKY_LIGHT_COLOR)} disabled={!engine.skyLight}
-                change={(value) => setConfig('LIGHTS_SKY_LIGHT_COLOR', value)} />
-              <ColorField label="Ground color" value={colorHex(config.LIGHTS_SKY_LIGHT_GROUND)} disabled={!engine.skyLight}
-                change={(value) => setConfig('LIGHTS_SKY_LIGHT_GROUND', value)} />
+              <ColorField label="Sky color" value={skyLight ? '#' + skyLight.color.getHexString() : '#ffffff'} disabled={!skyLight}
+                change={(value) => editSky((light) => light.color.set(value))} />
+              <ColorField label="Ground color" value={skyLight ? '#' + skyLight.groundColor.getHexString() : '#333333'} disabled={!skyLight}
+                change={(value) => editSky((light) => light.groundColor.set(value))} />
             </div>
           </details>
         </nav>
+        <span className="scene-status" role="status">{activeDocument.dirty ? 'Unsaved changes' : ''}</span>
       </header>
       <div className="transform-tools panel" role="group" aria-label="Transform tools">
         {tools.map(({ value, label, shortcut, icon }) => (
           <button key={value} type="button" className="tool-button"
             aria-label={label}
             aria-keyshortcuts={shortcut}
-            aria-pressed={value === 'gizmo' ? config.TRANSFORM_CONTROLS_ENABLED :
-              value === 'snap' ? config.SNAP_TO_GRID : config.TRANSFORM_CONTROLS_MODE === value}
+            aria-pressed={value === 'gizmo' ? transformSettings.TRANSFORM_CONTROLS_ENABLED :
+              value === 'snap' ? transformSettings.SNAP_TO_GRID : transformSettings.TRANSFORM_CONTROLS_MODE === value}
             onClick={() => changeTool(value)}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -175,7 +188,7 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
         <div className="panel-heading"><h2 id="properties-heading">Inspector</h2></div>
         <div className="panel-body">
           {selectedObject
-            ? <Properties key={selectedObject.uuid} object={selectedObject} refresh={editSelection}
+            ? <Properties key={selectedObject.uuid} object={selectedObject} refresh={engine.editSelection}
                 setVisible={(visible) => engine.setItemVisibility(selectedObject, visible)} />
             : <p className="empty-selection">Select an item to edit its properties.</p>}
         </div>

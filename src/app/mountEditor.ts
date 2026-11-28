@@ -16,15 +16,10 @@ export function mountEditor(host: HTMLElement, refresh: () => void) {
     cleanup.push(mouseManager.init(engine));
     cleanup.push(eventManager.init(engine));
     engine.addEventListener('selection-changed', refresh);
-    engine.addEventListener('scene-loaded', refresh);
-    engine.addEventListener('scene-changed', refresh);
-    const transformControls = engine.transformControls!;
-    transformControls.addEventListener('objectChange', refresh);
+    engine.addEventListener('document-changed', refresh);
     cleanup.push(() => {
       engine.removeEventListener('selection-changed', refresh);
-      engine.removeEventListener('scene-loaded', refresh);
-      engine.removeEventListener('scene-changed', refresh);
-      transformControls.removeEventListener('objectChange', refresh);
+      engine.removeEventListener('document-changed', refresh);
     });
 
     function resize(width: number, height: number) {
@@ -38,13 +33,14 @@ export function mountEditor(host: HTMLElement, refresh: () => void) {
     observer.observe(host);
     cleanup.push(() => observer.disconnect());
 
-    const config = engine.config;
-    const configCallbacks: Record<keyof typeof config, () => void> = getConfigCallbacks(engine);
-    const configKeys = Object.keys(configCallbacks) as (keyof typeof config)[];
-    const previousConfig = { ...config };
+    const settings = () => ({ ...engine.config, ...engine.transformSettings });
+    const configCallbacks: Record<keyof ReturnType<typeof settings>, () => void> = getConfigCallbacks(engine);
+    const configKeys = Object.keys(configCallbacks) as (keyof ReturnType<typeof settings>)[];
+    const previousConfig = settings();
     let frameId: number;
 
     function animate() {
+      const config = settings();
       let configChanged = false;
       for (const key of configKeys) {
         if (config[key] !== previousConfig[key]) {

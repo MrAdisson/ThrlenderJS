@@ -13,7 +13,7 @@ La page HTML charge `main.tsx`, qui monte React. Le composant `App` fournit le c
 <!-- builder:data -->
 ## Données
 
-La scène et les réglages vivent en mémoire dans le navigateur. La sauvegarde télécharge le JSON Three.js sous forme de fichier .thrl. Le chargement THRL et l’import FBX lisent des fichiers locaux avec FileReader. Le dépôt ne déclare aucun stockage serveur. [Moteur](../src/ThrlenderEngine.js)
+Le document de scène en mémoire regroupe le contenu Three.js, les réglages de lumière du ciel portés par la scène et le suivi des modifications. Les préférences d’affichage, la caméra de navigation, la sélection et les réglages du manipulateur appartiennent à l’éditeur. La création et l’ouverture remplacent le document au même endroit, réinitialisent les contrôles liés à la scène et conservent les préférences d’affichage. La sauvegarde télécharge le JSON Three.js sous forme de fichier .thrl. Le chargement THRL et l’import FBX lisent des fichiers locaux avec FileReader. Le dépôt ne déclare aucun stockage serveur. [Moteur](../src/ThrlenderEngine.js)
 
 <!-- builder:environments -->
 ## Environnements et hébergement

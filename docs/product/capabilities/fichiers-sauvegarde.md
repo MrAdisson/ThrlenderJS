@@ -5,4 +5,4 @@ parent: CAP-FICHIERS
 deprecated: false
 ---
 
-Dans **File**, **Save THRL** télécharge la scène courante dans **scene.thrl**. La grille, les axes et le manipulateur restent disponibles après le téléchargement et sont exclus du fichier.
+Dans **File**, **Save THRL** télécharge la scène courante dans **scene.thrl**. Le lancement du téléchargement efface l’indicateur **Unsaved changes**. La grille, les axes et le manipulateur restent disponibles après le téléchargement et sont exclus du fichier.

@@ -1,24 +1,24 @@
 import { Color } from 'three';
 import { logger } from './logger';
 
-export const createConfig = () => ({
+export const createViewPreferences = () => ({
   WIREFRAME_MODE: false,
   GRID_VISIBLE: true,
   GRID_COLOR: 'rgb(099, 099, 099)',
   AXES_HELPER: true,
   ENABLE_DAMPING: true,
+  LIGHTS_LIGHT_HELPERS_VISIBLE: true,
+});
+
+export const createTransformSettings = () => ({
   TRANSFORM_CONTROLS_ENABLED: true,
   TRANSFORM_CONTROLS_MODE: 'translate',
   SNAP_TO_GRID: true,
-  LIGHTS_LIGHT_HELPERS_VISIBLE: true,
-  LIGHTS_SKY_LIGHT_INTENSITY: 0.2,
-  LIGHTS_SKY_LIGHT_COLOR: 'rgb(255, 255, 255)',
-  LIGHTS_SKY_LIGHT_GROUND: '#333333',
 });
 
 /** @param {import('../ThrlenderEngine').ThrlenderEngine} thrlender */
 export const getConfigCallbacks = (thrlender) => {
-  const config = thrlender.config;
+  const { config, transformSettings } = thrlender;
   return {
     WIREFRAME_MODE: () => {
       thrlender.scene.traverse((object) => {
@@ -49,11 +49,11 @@ export const getConfigCallbacks = (thrlender) => {
       logger.log('ENABLE_DAMPING : ' + config.ENABLE_DAMPING, 'SETTINGS', 'grey');
     },
     TRANSFORM_CONTROLS_MODE: () => {
-      thrlender.transformControls.setMode(config.TRANSFORM_CONTROLS_MODE);
-      logger.log('TRANSFORM_CONTROLS_MODE : ' + config.TRANSFORM_CONTROLS_MODE, 'SETTINGS', 'grey');
+      thrlender.transformControls.setMode(transformSettings.TRANSFORM_CONTROLS_MODE);
+      logger.log('TRANSFORM_CONTROLS_MODE : ' + transformSettings.TRANSFORM_CONTROLS_MODE, 'SETTINGS', 'grey');
     },
     SNAP_TO_GRID: () => {
-      config.SNAP_TO_GRID
+      transformSettings.SNAP_TO_GRID
         ? (() => {
             thrlender.transformControls.setTranslationSnap(1);
             thrlender.transformControls.setRotationSnap((15 * Math.PI) / 180);
@@ -64,10 +64,10 @@ export const getConfigCallbacks = (thrlender) => {
             thrlender.transformControls.setRotationSnap(null);
             thrlender.transformControls.setScaleSnap(null);
           })();
-      logger.log('SNAP_TO_GRID : ' + config.SNAP_TO_GRID, 'SETTINGS', 'grey');
+      logger.log('SNAP_TO_GRID : ' + transformSettings.SNAP_TO_GRID, 'SETTINGS', 'grey');
     },
     TRANSFORM_CONTROLS_ENABLED: () => {
-      config.TRANSFORM_CONTROLS_ENABLED
+      transformSettings.TRANSFORM_CONTROLS_ENABLED
         ? (() => {
             thrlender.transformControls.enabled = true;
             thrlender.transformControls.showX = true;
@@ -83,19 +83,6 @@ export const getConfigCallbacks = (thrlender) => {
     },
     LIGHTS_LIGHT_HELPERS_VISIBLE: () => {
       thrlender.syncLightHelpers();
-    },
-    LIGHTS_SKY_LIGHT_INTENSITY: () => {
-      if (!thrlender.skyLight) return;
-      thrlender.skyLight.intensity = config.LIGHTS_SKY_LIGHT_INTENSITY;
-      logger.log('LIGHTS_SKY_LIGHT_INTENSITY : ' + config.LIGHTS_SKY_LIGHT_INTENSITY, 'SETTINGS', 'grey');
-    },
-    LIGHTS_SKY_LIGHT_COLOR: () => {
-      logger.log('LIGHTS_SKY_LIGHT_COLOR : ' + config.LIGHTS_SKY_LIGHT_COLOR, 'SETTINGS', 'grey');
-      thrlender.skyLight?.color.set(config.LIGHTS_SKY_LIGHT_COLOR);
-    },
-    LIGHTS_SKY_LIGHT_GROUND: () => {
-      logger.log('LIGHTS_SKY_LIGHT_GROUND : ' + config.LIGHTS_SKY_LIGHT_GROUND, 'SETTINGS', 'grey');
-      thrlender.skyLight?.groundColor.set(config.LIGHTS_SKY_LIGHT_GROUND);
     },
   };
 };
