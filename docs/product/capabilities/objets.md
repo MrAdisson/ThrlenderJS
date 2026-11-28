@@ -1,12 +1,11 @@
 ---
 id: CAP-OBJETS
 title: Composer la scène
-parent: 
+parent:
+deprecated: false
 order: 4
 ---
 
-L’éditeur permet de placer des formes et de travailler sur la sélection dans la vue 3D.
+L’éditeur permet d’ajouter des formes, des lumières et des modèles FBX. Le panneau **Scene** présente leur hiérarchie et permet de déplier les groupes importés. Les repères et aides de l’éditeur sont exclus de l’arborescence.
 
-Le menu d’ajout et le panneau de réglages restent accessibles au-dessus de la vue.
-
-Code : [Interface](../../../src/app/App.tsx), [ThrlenderEngine.js](../../../src/ThrlenderEngine.js)
+**Inspector** permet de renommer l’élément sélectionné et de régler sa visibilité. Masquer un groupe masque ses descendants dans la vue. Les éléments masqués restent sélectionnables dans **Scene**. Les noms et les réglages de visibilité sont conservés à la sauvegarde et à la réouverture THRL.

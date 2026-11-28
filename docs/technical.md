@@ -23,7 +23,7 @@ Le README indique npm run dev pour le développement. npm run build produit dist
 <!-- builder:conventions -->
 ## Conventions
 
-Le code se trouve sous `src`. Les modules React et leur raccordement à l’éditeur utilisent TypeScript en mode strict. Le moteur et les gestionnaires de la vue restent en JavaScript. La configuration Prettier définit une indentation de deux espaces, des apostrophes, des points-virgules et une largeur de 120. La scène nomme les éléments utiles à la sélection et à la reconstruction des repères. [Prettier](../.prettierrc) · [Configuration de la scène](../src/utils/config.js)
+Le code se trouve sous `src`. Les modules React et leur raccordement à l’éditeur utilisent TypeScript en mode strict. Le moteur et les gestionnaires de la vue restent en JavaScript. La configuration Prettier définit une indentation de deux espaces, des apostrophes, des points-virgules et une largeur de 120. La vue 3D et l’arborescence partagent la sélection du moteur. Les noms et la visibilité sont des propriétés des objets Three.js sérialisées en THRL. Les aides propres à l’éditeur sont recréées à l’ouverture. [Prettier](../.prettierrc) · [Configuration de la scène](../src/utils/config.js)
 
 <!-- builder:quality -->
 ## Qualité
