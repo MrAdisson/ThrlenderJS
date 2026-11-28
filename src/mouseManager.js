@@ -8,23 +8,23 @@ const init = (thrlender) => {
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 
-  let vertexClick;
+  let editClick;
   const onPointerDown = (event) => {
     const session = thrlender.vertexEdit;
-    vertexClick = session && event.button === 0 && event.isPrimary && !thrlender.transformControls.dragging
+    editClick = session && event.button === 0 && event.isPrimary && !thrlender.transformControls.dragging
       ? { session, id: event.pointerId, x: event.clientX, y: event.clientY, extend: event.shiftKey }
       : undefined;
   };
 
-  const clearVertexClick = () => { vertexClick = undefined; };
+  const clearEditClick = () => { editClick = undefined; };
   const onPointerMove = (event) => {
-    if (vertexClick?.id === event.pointerId &&
-        Math.hypot(event.clientX - vertexClick.x, event.clientY - vertexClick.y) > 4) clearVertexClick();
+    if (editClick?.id === event.pointerId &&
+        Math.hypot(event.clientX - editClick.x, event.clientY - editClick.y) > 4) clearEditClick();
   };
 
   const onPointerUp = (event) => {
-    const start = vertexClick;
-    clearVertexClick();
+    const start = editClick;
+    clearEditClick();
     if (!start || start.session !== thrlender.vertexEdit || start.id !== event.pointerId ||
         Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4) return;
     const bounds = canvas.getBoundingClientRect();
@@ -63,7 +63,7 @@ const init = (thrlender) => {
   };
 
   const onAdditivePointerDown = (event) => {
-    if (!thrlender.vertexEdit || !event.shiftKey || event.button !== 0 || !event.isPrimary) return;
+    if (thrlender.vertexEdit?.selectionMode !== 'vertices' || !event.shiftKey || event.button !== 0 || !event.isPrimary) return;
     onPointerDown(event);
     canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(event.pointerId);
@@ -75,14 +75,14 @@ const init = (thrlender) => {
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
-  canvas.addEventListener('pointercancel', clearVertexClick);
+  canvas.addEventListener('pointercancel', clearEditClick);
   return () => {
     canvas.removeEventListener('mousedown', onMouseClick);
     canvas.removeEventListener('pointerdown', onAdditivePointerDown, true);
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', onPointerUp);
-    canvas.removeEventListener('pointercancel', clearVertexClick);
+    canvas.removeEventListener('pointercancel', clearEditClick);
   };
 };
 

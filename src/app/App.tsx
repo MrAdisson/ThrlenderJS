@@ -35,6 +35,7 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [item, setItem] = useState<ItemType>('cube');
   const [color, setColor] = useState('#ffffff');
+  const [extrusionDistance, setExtrusionDistance] = useState('1');
   useEffect(() => {
     function dismissOutside(event: PointerEvent) {
       if (event.target instanceof Node && !menus.current?.contains(event.target)) {
@@ -194,9 +195,48 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
         </div>
         <p id="viewport-mode-status" className="mode-status" aria-live="polite">
           {vertexEdit
-            ? `${vertexEdit.selected.size} selected · Shift-click to add or remove vertices`
+            ? vertexEdit.selectionMode === 'faces'
+              ? (vertexEdit.selectedFace === undefined ? 'Click a face to select it' : '1 face selected')
+              : `${vertexEdit.selected.size} selected · Shift-click to add or remove vertices`
             : editModeReason}
         </p>
+        {vertexEdit && (
+          <div className="mode-buttons edit-actions" role="group" aria-label="Edit selection">
+            <button type="button" aria-pressed={vertexEdit.selectionMode === 'vertices'}
+              onClick={() => engine.setEditSelectionMode('vertices')}>Vertices</button>
+            <button type="button" aria-pressed={vertexEdit.selectionMode === 'faces'}
+              onClick={() => engine.setEditSelectionMode('faces')}>Faces</button>
+            {vertexEdit.selectionMode === 'faces' && !vertexEdit.previewing && (
+              <button type="button" disabled={!vertexEdit.canExtrude} onClick={() => {
+                setExtrusionDistance('1');
+                vertexEdit.previewExtrusion(1);
+                refresh();
+              }}>Extrude</button>
+            )}
+            {vertexEdit.previewing && (
+              <form className="mode-buttons extrusion-controls" onSubmit={(event) => {
+                event.preventDefault();
+                engine.commitExtrusion();
+              }} onKeyDown={(event) => {
+                if (event.key !== 'Escape') return;
+                event.stopPropagation();
+                vertexEdit.endPreview();
+                refresh();
+              }}>
+                <label>Distance <input type="number" step="any" autoFocus value={extrusionDistance} onChange={(event) => {
+                  setExtrusionDistance(event.target.value);
+                  vertexEdit.previewExtrusion(Number(event.target.value));
+                  refresh();
+                }} /></label>
+                <button type="submit" disabled={!vertexEdit.preview}>Apply</button>
+                <button type="button" onClick={() => {
+                  vertexEdit.endPreview();
+                  refresh();
+                }}>Cancel</button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
       <div className="transform-tools panel" role="group" aria-label="Transform tools">
         {tools.map(({ value, label, shortcut, icon }) => (

@@ -747,3 +747,109 @@ test('edits a plane and exits vertex editing when the plane is hidden', async (t
   await page.getByText('Show the selected mesh to edit its vertices.').waitFor();
   assert.equal(await page.evaluate(() => window.current().vertexEdit), null);
 });
+
+test('selects both triangles as one face, previews and reopens an editable extrusion', async (t) => {
+  const page = await openEditor(t);
+  await addItem(page, 'cube');
+  const edit = page.getByRole('button', { name: 'Edit Mode', exact: true });
+  const extrude = page.getByRole('button', { name: 'Extrude', exact: true });
+  await edit.click();
+  await page.getByRole('button', { name: 'Faces', exact: true }).click();
+  assert.ok(await extrude.isDisabled());
+
+  const picks = await page.evaluate(() => {
+    const engine = window.current();
+    const { camera, renderer, vertexEdit: { mesh } } = engine;
+    engine.controls.target.set(0, 0, 0);
+    camera.position.set(0, 0, 2);
+    engine.controls.update();
+    camera.updateMatrixWorld();
+    const bounds = renderer.domElement.getBoundingClientRect();
+    return [-0.25, 0.25].map((offset) => {
+      const point = mesh.position.clone().set(0.1, offset, 0.5).project(camera);
+      return [bounds.left + (1 + point.x) * bounds.width / 2,
+        bounds.top + (1 - point.y) * bounds.height / 2];
+    });
+  });
+  await page.mouse.click(...picks[0]);
+  await page.getByText('1 face selected', { exact: true }).waitFor();
+  const face = await page.evaluate(() => window.current().vertexEdit.selectedFace);
+  await page.mouse.click(...picks[1]);
+  assert.equal(await page.evaluate(() => window.current().vertexEdit.selectedFace), face);
+  assert.equal(await page.evaluate(() =>
+    window.current().vertexEdit.faceHighlight.geometry.attributes.position.count), 6);
+
+  const getState = () => page.evaluate(() => {
+    const { vertexEdit: session, activeDocument } = window.current();
+    return { geometry: session.mesh.geometry.uuid, triangles: session.mesh.geometry.index.count / 3,
+      preview: session.preview?.boundingBox.max.z, revision: activeDocument.revision };
+  });
+  const original = await getState();
+  await extrude.click();
+  const distance = page.getByLabel('Distance', { exact: true });
+  const apply = page.getByRole('button', { name: 'Apply', exact: true });
+  await distance.fill('0');
+  assert.ok(await apply.isDisabled());
+  await distance.fill('1.25');
+  assert.deepEqual(await getState(), { ...original, preview: 1.75 });
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.deepEqual(await getState(), original);
+
+  await extrude.click();
+  await distance.press('Escape');
+  assert.deepEqual(await getState(), original);
+
+  await extrude.click();
+  await distance.fill('0.75');
+  await apply.click();
+  const committed = await getState();
+  assert.notEqual(committed.geometry, original.geometry);
+  assert.equal(committed.triangles, 20);
+  assert.equal(committed.revision, original.revision + 1);
+  await page.getByText('1 face selected', { exact: true }).waitFor();
+
+  // Save during another preview and verify only the committed geometry was written.
+  await extrude.click();
+  await menu(page, 'File').click();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save THRL', exact: true }).click();
+  const file = await (await downloading).path();
+  const json = JSON.parse(await readFile(file, 'utf8'));
+  assert.equal(json.geometries.length, 1);
+  assert.equal(json.geometries[0].data.index.array.length, 60);
+  await upload(page, 'Open THRL', file);
+  await page.waitForFunction(() => !window.current().vertexEdit);
+  await page.getByRole('button', { name: 'Cube', exact: true }).click();
+  await edit.click();
+  const corner = await page.evaluate(() => {
+    const { camera, renderer, controls, vertexEdit: { mesh, topology } } = window.current();
+    controls.target.set(0, 0, 0);
+    camera.position.set(0, 0, 5);
+    controls.update();
+    camera.updateMatrixWorld();
+    const bounds = renderer.domElement.getBoundingClientRect();
+    const vertex = topology.groups.findIndex((_, i) => {
+      const p = topology.position(mesh.geometry, i);
+      return p.x === 0.5 && p.y === -0.5 && p.z === 1.25;
+    });
+    const point = mesh.localToWorld(topology.position(mesh.geometry, vertex)).project(camera);
+    return { vertex, x: bounds.left + (1 + point.x) * bounds.width / 2,
+      y: bounds.top + (1 - point.y) * bounds.height / 2 };
+  });
+  await page.getByRole('button', { name: 'Faces', exact: true }).click();
+  const center = await page.evaluate(() => {
+    const { renderer } = window.current();
+    const bounds = renderer.domElement.getBoundingClientRect();
+    return [bounds.left + bounds.width / 2, bounds.top + bounds.height / 2];
+  });
+  await page.mouse.click(...center);
+  assert.equal(await page.evaluate(() => window.current().vertexEdit.selectedFace), face);
+  await page.getByRole('button', { name: 'Vertices', exact: true }).click();
+  await page.mouse.click(corner.x, corner.y);
+  assert.deepEqual(await page.evaluate(() => [...window.current().vertexEdit.selected]), [corner.vertex]);
+  await dragVertexSelection(page);
+  assert.ok(await page.evaluate((vertex) => {
+    const { mesh, topology } = window.current().vertexEdit;
+    return topology.position(mesh.geometry, vertex).x > 0.5;
+  }, corner.vertex));
+});

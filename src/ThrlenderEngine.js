@@ -165,13 +165,25 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
       return;
     }
 
-    const mesh = this.vertexEdit.mesh;
-    if (this.vertexEdit.translateSelection((geometry) => {
-      const previous = mesh.geometry;
-      mesh.geometry = geometry;
-      if (!collectResources(this.scene).has(previous)) previous.dispose();
-    })) this.markDocumentChanged();
+    if (this.vertexEdit.translateSelection(this.replaceEditGeometry)) this.markDocumentChanged();
   };
+
+  replaceEditGeometry = (geometry) => {
+    const mesh = this.vertexEdit.mesh;
+    const previous = mesh.geometry;
+    mesh.geometry = geometry;
+    if (!collectResources(this.scene).has(previous)) previous.dispose();
+  };
+
+  setEditSelectionMode(mode) {
+    this.vertexEdit?.setSelectionMode(mode);
+    this.syncSelectionGizmo();
+    this.dispatchEvent({ type: 'selection-changed' });
+  }
+
+  commitExtrusion() {
+    if (this.vertexEdit?.commitExtrusion(this.replaceEditGeometry)) this.markDocumentChanged();
+  }
 
   get editModeUnavailableReason() {
     const object = this.selectedObject;
@@ -228,7 +240,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     return parent.children.filter((object) =>
       !object.isCamera && object !== this.gridHelper && object !== this.axesHelper &&
       object !== this.transformControls && object !== this.vertexEdit?.points &&
-      object !== this.vertexEdit?.pivot && !this.lightHelpers.has(object)
+      object !== this.vertexEdit?.pivot && object !== this.vertexEdit?.faceHighlight && !this.lightHelpers.has(object)
     );
   }
 
@@ -298,7 +310,20 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    const session = this.vertexEdit;
+    if (!session?.preview) {
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
+    // Keep preview buffers out of scene commands, including Save THRL.
+    const original = session.mesh.geometry;
+    try {
+      session.mesh.geometry = session.preview;
+      this.renderer.render(this.scene, this.camera);
+    } finally {
+      session.mesh.geometry = original;
+    }
   }
 
   update() {
@@ -330,7 +355,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     try {
       scene.children = children.filter((child) =>
         child !== this.axesHelper && child !== this.gridHelper && child !== this.transformControls &&
-        child !== this.vertexEdit?.points && child !== this.vertexEdit?.pivot && !this.lightHelpers.has(child));
+        child !== this.vertexEdit?.points && child !== this.vertexEdit?.pivot &&
+        child !== this.vertexEdit?.faceHighlight && !this.lightHelpers.has(child));
       const data = scene.toJSON();
       // Keep the camera entry used by older THRL exports.
       data.object.children = [...(data.object.children ?? []), this.camera.toJSON().object];
