@@ -628,10 +628,10 @@ test('edits welded cube vertices with the viewport gizmo and round-trips the def
   const edit = page.getByRole('button', { name: 'Edit Mode', exact: true });
   const objectMode = page.getByRole('button', { name: 'Object Mode', exact: true });
   assert.equal(await edit.isDisabled(), true);
-  await page.getByText('Select a cube or plane to edit vertices.').waitFor();
+  await page.getByText('Select a cube, plane or static FBX mesh to use Edit Mode.').waitFor();
   await addItem(page, 'sphere');
   assert.equal(await edit.isDisabled(), true);
-  await page.getByText('Vertex editing is available for cubes and planes.').waitFor();
+  await page.getByText('Select a cube, plane or static FBX mesh to use Edit Mode.').waitFor();
 
   await addItem(page, 'cube');
   await page.evaluate(() => {
@@ -852,4 +852,116 @@ test('selects both triangles as one face, previews and reopens an editable extru
     const { mesh, topology } = window.current().vertexEdit;
     return topology.position(mesh.geometry, vertex).x > 0.5;
   }, corner.vertex));
+});
+
+test('edits one FBX mesh from the hierarchy and reopens it with its materials and transforms', async (t) => {
+  const page = await openEditor(t);
+  const tree = page.getByRole('region', { name: 'Scene' });
+  const row = (name) => tree.getByRole('button', { name, exact: true });
+  const edit = page.getByRole('button', { name: 'Edit Mode', exact: true });
+  const extrude = page.getByRole('button', { name: 'Extrude', exact: true });
+
+  const snapshot = () => page.evaluate(() => {
+    const { scene } = window.current();
+    const panel = scene.getObjectByName('Panel');
+    const sibling = scene.getObjectByName('Sibling');
+    panel.updateWorldMatrix(true, false);
+    return {
+      shared: panel.geometry === sibling.geometry,
+      parent: panel.parent.name,
+      matrix: panel.matrixWorld.toArray().map((value) => Number(value.toFixed(10))),
+      geometry: panel.geometry.toJSON(),
+      sibling: sibling.geometry.toJSON(),
+      materials: panel.material.map((material) => material.toJSON()),
+    };
+  });
+
+  await upload(page, 'Import FBX', resolve('tests/fixtures/mesh-edit.fbx'));
+  await row('Assembly').click();
+  assert.ok(await edit.isDisabled());
+  await row('Expand Assembly').click();
+
+  async function checkDeformers() {
+    await row('Skinned').click();
+    assert.ok(await edit.isDisabled());
+    await page.getByText('Edit Mode is unavailable for meshes with a skeleton.').waitFor();
+    await row('Morphed').click();
+    assert.ok(await edit.isDisabled());
+    await page.getByText('Edit Mode is unavailable for meshes with morph targets.').waitFor();
+  }
+
+  await checkDeformers();
+  await row('Panel').click();
+  const before = await snapshot();
+  assert.ok(before.shared);
+  assert.equal(before.materials.length, 2);
+  assert.equal(before.parent, 'Assembly');
+  await edit.click();
+
+  async function project(points) {
+    return page.evaluate((points) => {
+      const { camera, renderer, controls, vertexEdit: { mesh } } = window.current();
+      const target = mesh.localToWorld(mesh.position.clone().set(0.5, 0.5, 0));
+      controls.target.copy(target);
+      camera.position.copy(target);
+      camera.position.z += 3;
+      controls.update();
+      camera.updateMatrixWorld();
+      const bounds = renderer.domElement.getBoundingClientRect();
+      return points.map(([x, y, z]) => {
+        const point = mesh.localToWorld(target.clone().set(x, y, z)).project(camera);
+        return [bounds.left + (1 + point.x) * bounds.width / 2,
+          bounds.top + (1 - point.y) * bounds.height / 2];
+      });
+    }, points);
+  }
+
+  const [corner] = await project([[0, 0, 0]]);
+  await page.mouse.click(...corner);
+  await dragVertexSelection(page);
+  const afterMove = await snapshot();
+  const { attributes } = afterMove.geometry.data;
+  const position = attributes.position.array;
+  assert.notDeepEqual(position.slice(0, 3), [0, 0, 0]);
+  assert.deepEqual(position.slice(0, 3), position.slice(9, 12));
+  assert.deepEqual(attributes.uv, before.geometry.data.attributes.uv);
+  assert.deepEqual(afterMove.geometry.data.groups, before.geometry.data.groups);
+  assert.deepEqual(afterMove.sibling.data.attributes, before.sibling.data.attributes);
+  assert.equal(afterMove.sibling.uuid, before.sibling.uuid);
+
+  await page.getByRole('button', { name: 'Faces', exact: true }).click();
+  const center = [0, 1, 2].map((axis) => (position[axis] + position[axis + 3] + position[axis + 6]) / 3);
+  const [face] = await project([center]);
+  await page.mouse.click(...face);
+  assert.equal(await page.evaluate(() =>
+    window.current().vertexEdit.faceHighlight.geometry.attributes.position.count), 3);
+  await extrude.click();
+  await page.getByRole('button', { name: 'Apply', exact: true }).click();
+  const edited = await snapshot();
+  assert.equal(edited.geometry.data.index.array.length / 3, 8);
+  assert.deepEqual(edited.geometry.data.groups, [
+    { start: 0, count: 3, materialIndex: 0 },
+    { start: 3, count: 3, materialIndex: 1 },
+    { start: 6, count: 18, materialIndex: 0 },
+  ]);
+  assert.deepEqual(edited.geometry.data.attributes.uv.array.slice(0, 12), attributes.uv.array);
+  assert.deepEqual(edited.materials, before.materials);
+  assert.deepEqual(edited.matrix, before.matrix);
+  assert.deepEqual(edited.sibling, afterMove.sibling);
+
+  await menu(page, 'File').click();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save THRL', exact: true }).click();
+  await upload(page, 'Open THRL', await (await downloading).path());
+  await page.waitForFunction(() => !window.current().selectedObject);
+  await row('Expand Assembly').click();
+  await checkDeformers();
+  await row('Panel').click();
+  assert.deepEqual(await snapshot(), JSON.parse(JSON.stringify(edited)));
+  await edit.click();
+  await page.getByRole('button', { name: 'Faces', exact: true }).click();
+  const cap = [center[0], center[1], edited.geometry.data.attributes.position.array[2]];
+  const [capPoint] = await project([cap]);
+  await page.mouse.click(...capPoint);
+  assert.ok(await extrude.isEnabled());
 });

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createViewPreferences, createTransformSettings, getConfigCallbacks } from './utils/config';
 import { SceneDocument } from './SceneDocument';
 import { VertexEditSession } from './VertexEditSession.js';
-import { supportsVertexEditing } from './VertexTopology.mjs';
+import { fbxMeshKey, vertexEditingUnavailableReason } from './VertexTopology.mjs';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
@@ -187,9 +187,9 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
   get editModeUnavailableReason() {
     const object = this.selectedObject;
-    if (!object) return 'Select a cube or plane to edit vertices.';
-    if (!(object instanceof THREE.Mesh)) return 'The selected item is not a mesh. Select a cube or plane.';
-    if (!supportsVertexEditing(object)) return 'Vertex editing is available for cubes and planes.';
+    if (!(object instanceof THREE.Mesh)) return 'Select a cube, plane or static FBX mesh to use Edit Mode.';
+    const reason = vertexEditingUnavailableReason(object);
+    if (reason) return reason;
     if (!this.isVisible(object)) return 'Show the selected mesh to edit its vertices.';
     object.updateWorldMatrix(true, false);
     if (!object.matrixWorld.determinant()) return 'The selected mesh needs a nonzero scale on every axis.';
@@ -597,6 +597,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
         this.scene.add(object);
         object.traverse((child) => {
           if (child.isLight) this.addLightHelper(child);
+          if (child.isMesh) child.geometry.userData[fbxMeshKey] = true;
         });
         getConfigCallbacks(this).WIREFRAME_MODE();
         this.markDocumentChanged();
