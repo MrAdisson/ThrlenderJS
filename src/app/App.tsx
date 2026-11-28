@@ -138,6 +138,23 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
             </div>
           </details>
           <details className="command-menu" name="scene-command">
+            <summary>Scene Settings</summary>
+            <div className="menu-panel">
+              {skyLight ? <>
+                <label className="range-field">
+                  <span>Sky intensity <span aria-hidden="true">{skyLight.intensity.toFixed(2)}</span></span>
+                  <input type="range" aria-label="Sky intensity" min="0" max="2" step="0.01"
+                    value={skyLight.intensity}
+                    onChange={(event) => editSky((light) => { light.intensity = event.currentTarget.valueAsNumber; })} />
+                </label>
+                <ColorField label="Sky color" value={'#' + skyLight.color.getHexString()}
+                  change={(value) => editSky((light) => light.color.set(value))} />
+                <ColorField label="Ground color" value={'#' + skyLight.groundColor.getHexString()}
+                  change={(value) => editSky((light) => light.groundColor.set(value))} />
+              </> : <p className="empty-selection">This scene has no built-in sky light.</p>}
+            </div>
+          </details>
+          <details className="command-menu" name="scene-command">
             <summary>View</summary>
             <div className="menu-panel">
               <Toggle label="Show grid" checked={config.GRID_VISIBLE} change={(value) => setConfig('GRID_VISIBLE', value)} />
@@ -149,19 +166,8 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
                 Focus selection <kbd>F</kbd>
               </button>
               <Toggle label="Show inspector" checked={inspectorOpen} change={setInspectorOpen} />
-              <div className="menu-section">Lighting</div>
               <Toggle label="Show light helpers" checked={config.LIGHTS_LIGHT_HELPERS_VISIBLE}
                 change={(value) => setConfig('LIGHTS_LIGHT_HELPERS_VISIBLE', value)} />
-              <label className="range-field">
-                <span>Sky intensity <span aria-hidden="true">{(skyLight?.intensity ?? 0).toFixed(2)}</span></span>
-                <input type="range" aria-label="Sky intensity" min="0" max="2" step="0.01"
-                  value={skyLight?.intensity ?? 0} disabled={!skyLight}
-                  onChange={(event) => editSky((light) => { light.intensity = event.currentTarget.valueAsNumber; })} />
-              </label>
-              <ColorField label="Sky color" value={skyLight ? '#' + skyLight.color.getHexString() : '#ffffff'} disabled={!skyLight}
-                change={(value) => editSky((light) => light.color.set(value))} />
-              <ColorField label="Ground color" value={skyLight ? '#' + skyLight.groundColor.getHexString() : '#333333'} disabled={!skyLight}
-                change={(value) => editSky((light) => light.groundColor.set(value))} />
             </div>
           </details>
         </nav>
@@ -188,7 +194,8 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
         <div className="panel-heading"><h2 id="properties-heading">Inspector</h2></div>
         <div className="panel-body">
           {selectedObject
-            ? <Properties key={selectedObject.uuid} object={selectedObject} refresh={engine.editSelection}
+            ? <Properties key={selectedObject.uuid} object={selectedObject} isSceneSky={selectedObject === skyLight}
+                refresh={engine.editSelection}
                 setVisible={(visible) => engine.setItemVisibility(selectedObject, visible)} />
             : <p className="empty-selection">Select an item to edit its properties.</p>}
         </div>

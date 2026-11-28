@@ -26,7 +26,7 @@ La version actuelle couvre la navigation 3D, la composition et l’éclairage d�
 ## Parcours clés
 
 1. Choisir une forme et une couleur dans **Add**, activer **Add to scene**, puis placer la forme avec le manipulateur ou **Inspector**.
-2. Ajouter une lumière, régler ses propriétés ou configurer la lumière du ciel dans la section **Lighting** du menu **View**. Le menu **Edit** permet de supprimer l’élément sélectionné après confirmation.
+2. Ajouter une lumière et régler ses propriétés dans **Inspector**. Ouvrir **Scene Settings** pour régler la lumière du ciel, même sans sélection. La sauvegarde THRL conserve ces réglages. Utiliser **View** pour régler la grille, les axes et le mode filaire. Le menu **Edit** permet de supprimer l’élément sélectionné après confirmation.
 3. Dans **Scene**, déplier un groupe importé et sélectionner un élément. Dans **Inspector**, modifier son nom ou sa visibilité.
 4. Dans **File**, ajouter un modèle avec **Import FBX**, télécharger la scène avec **Save THRL**, repartir de la scène initiale avec **New Scene** ou choisir un fichier avec **Open THRL**. Ces deux commandes demandent une confirmation si la scène active comporte des modifications non enregistrées. [Interface](../src/app/App.tsx)
 
