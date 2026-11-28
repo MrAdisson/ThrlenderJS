@@ -64,16 +64,16 @@ const init = (thrlender) => {
       // Keep the scene shortcut, and let Tab continue into the editor controls.
     }
   };
-  const onPointerCancel = () => {
+  const onLostPointerCapture = () => {
     thrlender.transformControls.dragging = false;
     thrlender.transformControls.axis = null;
   };
   canvas.addEventListener('keydown', onKeyDown);
-  canvas.addEventListener('lostpointercapture', onPointerCancel);
+  canvas.addEventListener('lostpointercapture', onLostPointerCapture);
 
   return () => {
     canvas.removeEventListener('keydown', onKeyDown);
-    canvas.removeEventListener('lostpointercapture', onPointerCancel);
+    canvas.removeEventListener('lostpointercapture', onLostPointerCapture);
   };
 };
 

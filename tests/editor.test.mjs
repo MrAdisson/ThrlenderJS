@@ -938,6 +938,10 @@ test('edits one FBX mesh from the hierarchy and reopens it with its materials an
   });
 
   await upload(page, 'Import FBX', resolve('tests/fixtures/mesh-edit.fbx'));
+  await row('Assembly').waitFor();
+  await editCommand(page, 'Undo');
+  await row('Assembly').waitFor({ state: 'detached' });
+  await editCommand(page, 'Redo');
   await row('Assembly').click();
   assert.ok(await edit.isDisabled());
   await row('Expand Assembly').click();

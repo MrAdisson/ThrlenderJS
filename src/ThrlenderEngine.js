@@ -650,9 +650,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   insertObject(object, parent, selection) {
     this.transformControls.dragging = false;
     const previous = this.selectedObject;
-    const index = parent.children.length;
     const attach = () => {
-      this.attachSceneObject(object, parent, index);
+      this.attachSceneObject(object, parent);
       this.restoreSelection(selection);
     };
     attach();
@@ -666,9 +665,12 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     });
   }
 
-  attachSceneObject(object, parent, index) {
+  attachSceneObject(object, parent, nextSibling = null) {
     parent.add(object);
-    parent.children.splice(index, 0, parent.children.pop());
+    if (nextSibling?.parent === parent) {
+      parent.children.pop();
+      parent.children.splice(parent.children.indexOf(nextSibling), 0, object);
+    }
     object.traverse((child) => {
       if (child.isLight) this.addLightHelper(child);
     });
@@ -748,7 +750,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
     this.transformControls.dragging = false;
     const parent = object.parent;
-    const index = parent.children.indexOf(object);
+    const nextSibling = parent.children.slice(parent.children.indexOf(object) + 1)
+      .find((sibling) => !this.lightHelpers.has(sibling));
     const skyLight = this.skyLight;
     const remove = () => {
       this.detachSceneObject(object);
@@ -758,7 +761,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.recordOperation({
       object,
       undo: () => {
-        this.attachSceneObject(object, parent, index);
+        this.attachSceneObject(object, parent, nextSibling);
         this.activeDocument.skyLight = skyLight;
         this.restoreSelection(object);
       },
