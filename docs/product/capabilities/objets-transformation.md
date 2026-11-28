@@ -11,3 +11,5 @@ La barre d’outils de la vue contient **Move**, **Rotate** et **Scale**. Le mod
 **View → Move snap step** propose 0,1, 0,25, 0,5, 1, 2 et 5 unités pour les déplacements à la souris avec **Snap** actif. Le pas choisi reste disponible lorsqu’on désactive puis réactive **Snap**. La rotation et l’échelle utilisent respectivement 15 degrés et 0,25. La création ou l’ouverture d’une scène rétablit le mode **Move** et l’accrochage à 1 unité.
 
 Dans une hiérarchie, la rotation ou l’échelle du parent peut décaler les points d’accrochage par rapport à la grille mondiale.
+
+En **Object Mode**, le manipulateur transforme l’objet sélectionné. En **Edit Mode**, seul **Move** est disponible et le manipulateur déplace les sommets sélectionnés. **Gizmo**, **Snap** et le pas de déplacement s’appliquent aussi aux sommets. Le retour en **Object Mode** rétablit l’outil de transformation d’objet précédemment choisi. [Modélisation 3D](modelisation.md)

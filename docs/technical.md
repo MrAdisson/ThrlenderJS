@@ -15,6 +15,8 @@ La page HTML charge `main.tsx`, qui monte React. Le composant `App` fournit le c
 
 Le document de scène en mémoire regroupe le contenu Three.js, les réglages de lumière du ciel portés par la scène et le suivi des modifications. Les préférences d’affichage, la caméra de navigation, la sélection et les réglages du manipulateur appartiennent à l’éditeur. La création et l’ouverture remplacent le document au même endroit, réinitialisent les contrôles liés à la scène et conservent les préférences d’affichage. La sauvegarde télécharge le JSON Three.js sous forme de fichier .thrl. Le chargement THRL et l’import FBX lisent des fichiers locaux avec FileReader. Le dépôt ne déclare aucun stockage serveur. [Moteur](../src/ThrlenderEngine.js)
 
+Le mode Édition possède une sélection et des repères temporaires. Une topologie de sommets logiques regroupe les positions locales identiques indépendamment de l’indexation du maillage. Au premier déplacement, le moteur copie les attributs et les index dans une géométrie sérialisable en THRL avec les groupes de sommets. La sauvegarde conserve ainsi les positions éditées et l’appartenance aux groupes même si deux sommets logiques coïncident après une modification. L’interface active ce parcours pour les cubes et les plans. [Topologie](../src/VertexTopology.mjs)
+
 <!-- builder:environments -->
 ## Environnements et hébergement
 
