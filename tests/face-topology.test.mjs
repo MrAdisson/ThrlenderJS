@@ -35,6 +35,9 @@ test('extrudes a logical cube face into a closed oriented surface without an int
   assert.equal(new Set(faces).size, 6);
   assert.equal(faces[0], faces[1]);
 
+  assert.equal(extrudeFirst(cube, 0), null);
+  assert.equal(extrudeFirst(cube, Number.MIN_VALUE), null);
+  assert.equal(extrudeFirst(cube, Number.MAX_VALUE), null);
   const result = extrudeFirst(cube, 2);
   assert.equal(cube.index.count / 3, 12);
   assert.equal(result.index.count / 3, 20);

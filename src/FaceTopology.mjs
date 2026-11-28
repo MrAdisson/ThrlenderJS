@@ -63,7 +63,9 @@ export function describeFace(geometry, topology, faces, face) {
 }
 
 export function extrudeFace(geometry, faces, face, description, distance) {
+  if (!Number.isFinite(distance) || distance <= 0) return null;
   const { logical, normal, boundary } = description;
+  let valid = true;
   const result = new BufferGeometry();
   const attributes = Object.entries(geometry.attributes).filter(([name]) => name !== 'normal');
   const values = attributes.map(() => []);
@@ -84,7 +86,13 @@ export function extrudeFace(geometry, faces, face, description, distance) {
     attributes.forEach(([name, attribute], i) => {
       if (name === 'position') {
         point.fromBufferAttribute(position, source);
-        if (raised) point.addScaledVector(normal, distance);
+        if (raised) {
+          const [x, y, z] = point;
+          point.addScaledVector(normal, distance).set(
+            Math.fround(point.x), Math.fround(point.y), Math.fround(point.z),
+          );
+          valid &&= [...point].every(Number.isFinite) && (point.x !== x || point.y !== y || point.z !== z);
+        }
         values[i].push(...point);
       } else if (name === 'uv' && uv) {
         values[i].push(...uv);
@@ -153,6 +161,7 @@ export function extrudeFace(geometry, faces, face, description, distance) {
     addTriangle([a, c, d], id, sideMaterial);
   }
 
+  if (!valid) return null;
   attributes.forEach(([name, attribute], i) => {
     result.setAttribute(name, new BufferAttribute(
       new attribute.array.constructor(values[i]), attribute.itemSize, attribute.normalized,
