@@ -10,17 +10,17 @@ const init = (thrlender) => {
       transformSettings.TRANSFORM_CONTROLS_ENABLED = !transformSettings.TRANSFORM_CONTROLS_ENABLED;
     }
     //   S TOGGLE SCALE MODE
-    if (event.key === 's') {
+    if (!thrlender.vertexEdit && event.key === 's') {
       event.preventDefault();
       transformSettings.TRANSFORM_CONTROLS_MODE = 'scale';
     }
     //   R TOGGLE ROTATE MODE
-    if (event.key === 'r') {
+    if (!thrlender.vertexEdit && event.key === 'r') {
       event.preventDefault();
       transformSettings.TRANSFORM_CONTROLS_MODE = 'rotate';
     }
     //   T TOGGLE TRANSLATE MODE
-    if (event.key === 't') {
+    if (!thrlender.vertexEdit && event.key === 't') {
       event.preventDefault();
       transformSettings.TRANSFORM_CONTROLS_MODE = 'translate';
     }
@@ -40,7 +40,7 @@ const init = (thrlender) => {
       config.WIREFRAME_MODE = !config.WIREFRAME_MODE;
     }
     if (event.key === 'f') thrlender.focusSelection();
-    if (event.key === 'Tab') {
+    if (!thrlender.vertexEdit && event.key === 'Tab') {
       let closest;
       let distance = Infinity;
       for (const object of thrlender.sceneItems()) {

@@ -57,7 +57,7 @@ export const getConfigCallbacks = (thrlender) => {
       logger.log('ENABLE_DAMPING : ' + config.ENABLE_DAMPING, 'SETTINGS', 'grey');
     },
     TRANSFORM_CONTROLS_MODE: () => {
-      thrlender.transformControls.setMode(transformSettings.TRANSFORM_CONTROLS_MODE);
+      thrlender.syncTransformMode();
       logger.log('TRANSFORM_CONTROLS_MODE : ' + transformSettings.TRANSFORM_CONTROLS_MODE, 'SETTINGS', 'grey');
     },
     SNAP_TO_GRID: () => {

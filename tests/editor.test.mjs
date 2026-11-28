@@ -602,3 +602,148 @@ test('scene hierarchy follows viewport picking and preserves names and visibilit
   assert.equal(await row('Model').count(), 0);
   assert.equal(await row('Front face').count(), 0);
 });
+
+async function dragVertexSelection(page) {
+  const handle = await page.evaluate(() => {
+    const engine = window.current();
+    const { camera, renderer, vertexEdit } = engine;
+    const center = vertexEdit.pivot.getWorldPosition(vertexEdit.pivot.position.clone());
+    const distance = center.distanceTo(camera.position) *
+      Math.min(1.9 * Math.tan(Math.PI * camera.fov / 360), 7);
+    center.x += distance * 0.12;
+    center.project(camera);
+    const bounds = renderer.domElement.getBoundingClientRect();
+    return { x: bounds.left + (1 + center.x) * bounds.width / 2,
+      y: bounds.top + (1 - center.y) * bounds.height / 2 };
+  });
+  await page.mouse.move(handle.x, handle.y);
+  await page.mouse.down();
+  await page.waitForFunction(() => window.current().transformControls.dragging);
+  await page.mouse.move(handle.x + 55, handle.y, { steps: 5 });
+  await page.mouse.up();
+}
+
+test('edits welded cube vertices with the viewport gizmo and round-trips the deformation', async (t) => {
+  const page = await openEditor(t);
+  const edit = page.getByRole('button', { name: 'Edit Mode', exact: true });
+  const objectMode = page.getByRole('button', { name: 'Object Mode', exact: true });
+  assert.equal(await edit.isDisabled(), true);
+  await page.getByText('Select a cube or plane to edit vertices.').waitFor();
+  await addItem(page, 'sphere');
+  assert.equal(await edit.isDisabled(), true);
+  await page.getByText('Vertex editing is available for cubes and planes.').waitFor();
+
+  await addItem(page, 'cube');
+  await page.evaluate(() => {
+    const engine = window.current();
+    engine.selectedObject.position.set(1.5, 0.5, 0);
+    engine.selectedObject.rotation.set(0.1, 0.35, 0.2);
+    engine.selectedObject.scale.set(1.6, 0.7, 1.2);
+  });
+  await page.getByRole('button', { name: 'Rotate', exact: true }).click();
+  await page.getByRole('button', { name: 'Snap', exact: true }).click();
+  await edit.click();
+  const { positions, transform, picks } = await page.evaluate(() => {
+    const engine = window.current();
+    const { mesh, topology } = engine.vertexEdit;
+    const bounds = engine.renderer.domElement.getBoundingClientRect();
+    engine.camera.updateMatrixWorld();
+    const projected = topology.groups.map((_, i) => {
+      const point = mesh.localToWorld(topology.position(mesh.geometry, i)).project(engine.camera);
+      return { x: bounds.left + (point.x + 1) * bounds.width / 2,
+        y: bounds.top + (1 - point.y) * bounds.height / 2 };
+    }).sort((a, b) => a.x - b.x);
+    return {
+      positions: Array.from(mesh.geometry.getAttribute('position').array),
+      transform: [...mesh.position, ...mesh.quaternion, ...mesh.scale],
+      picks: [projected[0], projected.at(-1)],
+    };
+  });
+  await page.mouse.click(picks[0].x, picks[0].y);
+  await page.getByText(/^1 selected ·/).waitFor();
+  await page.keyboard.down('Shift');
+  await page.mouse.click(picks[1].x, picks[1].y);
+  await page.getByText(/^2 selected ·/).waitFor();
+  await page.mouse.click(picks[1].x, picks[1].y);
+  await page.getByText(/^1 selected ·/).waitFor();
+  await page.mouse.click(picks[1].x, picks[1].y);
+  await page.keyboard.up('Shift');
+  await page.getByText(/^2 selected ·/).waitFor();
+
+  await dragVertexSelection(page);
+  const edited = await page.evaluate(() => {
+    const { mesh, topology, selected } = window.current().vertexEdit;
+    return {
+      positions: Array.from(mesh.geometry.getAttribute('position').array),
+      transform: [...mesh.position, ...mesh.quaternion, ...mesh.scale],
+      groups: topology.groups,
+      selected: [...selected],
+    };
+  });
+  assert.deepEqual(edited.transform, transform);
+  assert.equal(edited.groups.length, 8);
+  const deltas = edited.groups.map((indices, vertex) => {
+    const first = indices[0] * 3;
+    const point = edited.positions.slice(first, first + 3);
+    for (const index of indices) assert.deepEqual(edited.positions.slice(index * 3, index * 3 + 3), point);
+    const delta = point.map((value, axis) => value - positions[first + axis]);
+    assert.equal(delta.some((value) => Math.abs(value) > 1e-5), edited.selected.includes(vertex));
+    return delta;
+  });
+  assert.ok(deltas[edited.selected[0]].every((value, i) => Math.abs(value - deltas[edited.selected[1]][i]) < 1e-5));
+
+  await menu(page, 'File').click();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save THRL', exact: true }).click();
+  const file = await (await downloading).path();
+  const json = JSON.parse(await readFile(file, 'utf8'));
+  assert.deepEqual(json.object.children.map(({ name }) => name).sort(),
+    ['ThrlenderCamera', 'ThrlenderSkyLight', 'cube', 'sphere']);
+  await objectMode.click();
+  assert.equal(await page.getByRole('button', { name: 'Rotate', exact: true }).getAttribute('aria-pressed'), 'true');
+  await edit.click();
+  await page.getByText(/^0 selected ·/).waitFor();
+  await upload(page, 'Open THRL', file);
+  await page.waitForFunction(() => !window.current().selectedObject && !window.current().vertexEdit);
+  await page.getByRole('button', { name: 'Cube', exact: true }).click();
+  await edit.click();
+  const reopened = await page.evaluate(() => {
+    const { mesh, topology, selected } = window.current().vertexEdit;
+    return {
+      positions: Array.from(mesh.geometry.getAttribute('position').array),
+      transform: [...mesh.position, ...mesh.quaternion, ...mesh.scale],
+      groups: topology.groups,
+      selected: [...selected],
+    };
+  });
+  assert.ok(reopened.transform.every((value, i) => Math.abs(value - transform[i]) < 1e-10));
+  assert.deepEqual(reopened, { ...edited, transform: reopened.transform, selected: [] });
+});
+
+test('edits a plane and exits vertex editing when the plane is hidden', async (t) => {
+  const page = await openEditor(t);
+  await addItem(page, 'plane');
+  const edit = page.getByRole('button', { name: 'Edit Mode', exact: true });
+  await page.getByRole('button', { name: 'Snap', exact: true }).click();
+  await edit.click();
+  const corner = await page.evaluate(() => {
+    const { vertexEdit: { mesh, topology }, renderer, camera } = window.current();
+    const point = mesh.localToWorld(topology.position(mesh.geometry, 0)).project(camera);
+    const bounds = renderer.domElement.getBoundingClientRect();
+    return { x: bounds.left + (1 + point.x) * bounds.width / 2,
+      y: bounds.top + (1 - point.y) * bounds.height / 2, localX: -2.5 };
+  });
+  await page.mouse.click(corner.x, corner.y);
+  await page.getByText(/^1 selected ·/).waitFor();
+  assert.deepEqual(await page.evaluate(() => [...window.current().vertexEdit.selected]), [0]);
+  await dragVertexSelection(page);
+  assert.ok(await page.evaluate((previousX) => {
+    const { mesh, topology } = window.current().vertexEdit;
+    return topology.position(mesh.geometry, 0).x > previousX && mesh.position.lengthSq() === 0;
+  }, corner.localX));
+
+  await page.getByRole('checkbox', { name: 'Visible', exact: true }).uncheck();
+  assert.equal(await edit.isDisabled(), true);
+  await page.getByText('Show the selected mesh to edit its vertices.').waitFor();
+  assert.equal(await page.evaluate(() => window.current().vertexEdit), null);
+});

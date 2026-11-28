@@ -53,7 +53,8 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
       engine.removeEventListener('document-replaced', resetAddFields);
     };
   }, [engine]);
-  const { activeDocument, config, selectedObject, skyLight, transformSettings } = engine;
+  const { activeDocument, config, selectedObject, skyLight, transformSettings, vertexEdit } = engine;
+  const editModeReason = engine.editModeUnavailableReason;
   const colorHex = (value: string) => '#' + new Color(value).getHexString();
 
   function setConfig<K extends keyof typeof config>(key: K, value: typeof config[K]) {
@@ -78,7 +79,7 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
   function changeTool(value: string) {
     if (value === 'gizmo') transformSettings.TRANSFORM_CONTROLS_ENABLED = !transformSettings.TRANSFORM_CONTROLS_ENABLED;
     else if (value === 'snap') transformSettings.SNAP_TO_GRID = !transformSettings.SNAP_TO_GRID;
-    else transformSettings.TRANSFORM_CONTROLS_MODE = value;
+    else if (!vertexEdit) transformSettings.TRANSFORM_CONTROLS_MODE = value;
     refresh();
   }
 
@@ -185,13 +186,27 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
         </nav>
         <span className="scene-status" role="status">{activeDocument.dirty ? 'Unsaved changes' : ''}</span>
       </header>
+      <div className="viewport-mode panel" role="group" aria-label="Viewport mode">
+        <div className="mode-buttons">
+          <button type="button" aria-pressed={!vertexEdit} onClick={() => engine.setEditMode(false)}>Object Mode</button>
+          <button type="button" aria-pressed={!!vertexEdit} disabled={!!editModeReason}
+            aria-describedby="viewport-mode-status" onClick={() => engine.setEditMode(true)}>Edit Mode</button>
+        </div>
+        <p id="viewport-mode-status" className="mode-status" aria-live="polite">
+          {vertexEdit
+            ? `${vertexEdit.selected.size} selected · Shift-click to add or remove vertices`
+            : editModeReason}
+        </p>
+      </div>
       <div className="transform-tools panel" role="group" aria-label="Transform tools">
         {tools.map(({ value, label, shortcut, icon }) => (
           <button key={value} type="button" className="tool-button"
             aria-label={label}
+            disabled={!!vertexEdit && (value === 'rotate' || value === 'scale')}
             aria-keyshortcuts={shortcut}
             aria-pressed={value === 'gizmo' ? transformSettings.TRANSFORM_CONTROLS_ENABLED :
-              value === 'snap' ? transformSettings.SNAP_TO_GRID : transformSettings.TRANSFORM_CONTROLS_MODE === value}
+              value === 'snap' ? transformSettings.SNAP_TO_GRID :
+                (vertexEdit ? 'translate' : transformSettings.TRANSFORM_CONTROLS_MODE) === value}
             onClick={() => changeTool(value)}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -207,7 +222,7 @@ function EditorControls({ engine, refresh }: { engine: ThrlenderEngine; refresh:
         <div className="panel-body">
           {selectedObject
             ? <Properties key={selectedObject.uuid} object={selectedObject} isSceneSky={selectedObject === skyLight}
-                refresh={engine.editSelection}
+                refresh={engine.editSelection} showTransform={!vertexEdit}
                 setVisible={(visible) => engine.setItemVisibility(selectedObject, visible)} />
             : <p className="empty-selection">Select an item to edit its properties.</p>}
         </div>

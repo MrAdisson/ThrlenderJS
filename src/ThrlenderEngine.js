@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createViewPreferences, createTransformSettings, getConfigCallbacks } from './utils/config';
 import { SceneDocument } from './SceneDocument';
+import { VertexEditSession } from './VertexEditSession.js';
+import { supportsVertexEditing } from './VertexTopology.mjs';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
@@ -78,6 +80,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   objectUrls = new Set();
   /** @type {THREE.Object3D | null} */
   selectedObject = null;
+  /** @type {VertexEditSession | null} */
+  vertexEdit = null;
 
   /** @param {HTMLElement} host */
   init(host) {
@@ -98,9 +102,10 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     for (const url of this.objectUrls) URL.revokeObjectURL(url);
     this.objectUrls.clear();
 
+    this.stopVertexEditing();
     this.controls?.dispose();
     this.transformControls?.removeEventListener('dragging-changed', this.syncCameraControls);
-    this.transformControls?.removeEventListener('objectChange', this.editSelection);
+    this.transformControls?.removeEventListener('objectChange', this.onTransformChange);
     this.transformControls?.detach();
     this.transformControls?.removeFromParent();
     this.transformControls?.dispose();
@@ -154,6 +159,58 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.markDocumentChanged();
   };
 
+  onTransformChange = () => {
+    if (!this.vertexEdit) {
+      this.editSelection();
+      return;
+    }
+
+    const mesh = this.vertexEdit.mesh;
+    if (this.vertexEdit.translateSelection((geometry) => {
+      const previous = mesh.geometry;
+      mesh.geometry = geometry;
+      if (!collectResources(this.scene).has(previous)) previous.dispose();
+    })) this.markDocumentChanged();
+  };
+
+  get editModeUnavailableReason() {
+    const object = this.selectedObject;
+    if (!object) return 'Select a cube or plane to edit vertices.';
+    if (!(object instanceof THREE.Mesh)) return 'The selected item is not a mesh. Select a cube or plane.';
+    if (!supportsVertexEditing(object)) return 'Vertex editing is available for cubes and planes.';
+    if (!this.isVisible(object)) return 'Show the selected mesh to edit its vertices.';
+    object.updateWorldMatrix(true, false);
+    if (!object.matrixWorld.determinant()) return 'The selected mesh needs a nonzero scale on every axis.';
+    return '';
+  }
+
+  setEditMode(enabled) {
+    if (enabled === !!this.vertexEdit || (enabled && this.editModeUnavailableReason)) return;
+    if (enabled) {
+      this.transformControls.dragging = false;
+      this.transformControls.axis = null;
+      this.vertexEdit = new VertexEditSession(this.selectedObject, this.scene);
+    } else {
+      this.stopVertexEditing();
+    }
+    this.syncTransformMode();
+    this.syncSelectionGizmo();
+    this.dispatchEvent({ type: 'selection-changed' });
+  }
+
+  stopVertexEditing() {
+    if (!this.vertexEdit) return;
+    this.transformControls.dragging = false;
+    this.transformControls.axis = null;
+    this.transformControls.detach();
+    this.vertexEdit.dispose();
+    this.vertexEdit = null;
+  }
+
+  syncTransformMode() {
+    this.transformControls.setMode(this.vertexEdit ? 'translate' : this.transformSettings.TRANSFORM_CONTROLS_MODE);
+  }
+
   /** @param {THREE.Object3D | null} object */
   updateLightHelper(object) {
     if (!object) return;
@@ -170,7 +227,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   sceneItems(parent = this.scene) {
     return parent.children.filter((object) =>
       !object.isCamera && object !== this.gridHelper && object !== this.axesHelper &&
-      object !== this.transformControls && !this.lightHelpers.has(object)
+      object !== this.transformControls && object !== this.vertexEdit?.points &&
+      object !== this.vertexEdit?.pivot && !this.lightHelpers.has(object)
     );
   }
 
@@ -192,13 +250,17 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   setItemVisibility(object, visible) {
     object.visible = visible;
     this.syncLightHelpers();
+    if (this.vertexEdit && !this.isVisible(this.vertexEdit.mesh)) this.setEditMode(false);
     this.syncSelectionGizmo();
     this.markDocumentChanged();
   }
 
   syncSelectionGizmo() {
-    if (this.selectedObject && this.isVisible(this.selectedObject)) {
-      this.transformControls.attach(this.selectedObject);
+    const target = this.vertexEdit
+      ? (this.vertexEdit.selected.size ? this.vertexEdit.pivot : null)
+      : this.selectedObject;
+    if (target && this.isVisible(target)) {
+      this.transformControls.attach(target);
     } else {
       this.transformControls.detach();
     }
@@ -215,7 +277,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     this.transformControls = new TransformControls(this.camera, this.renderer.domElement);
     this.transformControls.name = 'ThrlenderTransformControls';
     this.transformControls.addEventListener('dragging-changed', this.syncCameraControls);
-    this.transformControls.addEventListener('objectChange', this.editSelection);
+    this.transformControls.addEventListener('objectChange', this.onTransformChange);
     this.resetTransformSettings();
     this.scene.add(this.transformControls);
   }
@@ -241,6 +303,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
 
   update() {
     this.controls.update();
+    this.vertexEdit?.syncMatrix();
   }
 
   syncCameraControls = ({ value: dragging }) => {
@@ -266,7 +329,8 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     let jsonScene;
     try {
       scene.children = children.filter((child) =>
-        child !== this.axesHelper && child !== this.gridHelper && child !== this.transformControls && !this.lightHelpers.has(child));
+        child !== this.axesHelper && child !== this.gridHelper && child !== this.transformControls &&
+        child !== this.vertexEdit?.points && child !== this.vertexEdit?.pivot && !this.lightHelpers.has(child));
       const data = scene.toJSON();
       // Keep the camera entry used by older THRL exports.
       data.object.children = [...(data.object.children ?? []), this.camera.toJSON().object];
@@ -366,6 +430,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   replaceDocument(next) {
     const previous = this.scene;
     const selection = this.selectedObject;
+    this.stopVertexEditing();
     this.selectedObject = null;
     this.transformControls.detach();
     this.transformControls.dragging = false;
@@ -411,7 +476,9 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   setSelectedObject(object) {
     const selection = object?.light ?? object ?? null;
     if (selection === this.selectedObject) return;
+    this.stopVertexEditing();
     this.selectedObject = selection;
+    this.syncTransformMode();
     this.syncSelectionGizmo();
     this.dispatchEvent({ type: 'selection-changed' });
   }
