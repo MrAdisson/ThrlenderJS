@@ -628,10 +628,10 @@ test('edits welded cube vertices with the viewport gizmo and round-trips the def
   const edit = page.getByRole('button', { name: 'Edit Mode', exact: true });
   const objectMode = page.getByRole('button', { name: 'Object Mode', exact: true });
   assert.equal(await edit.isDisabled(), true);
-  await page.getByText('Select a cube or plane to edit vertices.').waitFor();
+  await page.getByText('Select a cube, plane or static FBX mesh to use Edit Mode.').waitFor();
   await addItem(page, 'sphere');
   assert.equal(await edit.isDisabled(), true);
-  await page.getByText('Vertex editing is available for cubes and planes.').waitFor();
+  await page.getByText('Select a cube, plane or static FBX mesh to use Edit Mode.').waitFor();
 
   await addItem(page, 'cube');
   await page.evaluate(() => {

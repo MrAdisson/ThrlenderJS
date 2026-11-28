@@ -1,12 +1,22 @@
 import { BufferGeometry, Vector3 } from 'three';
 
 export const topologyKey = 'thrlenderVertexGroups';
+export const fbxMeshKey = 'thrlenderFbxMesh';
 
-export function supportsVertexEditing(mesh) {
-  const geometry = mesh.geometry;
-  return !mesh.isSkinnedMesh && !mesh.isInstancedMesh && !!geometry.getAttribute('position') &&
-    (geometry.type === 'BoxGeometry' || geometry.type === 'PlaneGeometry' ||
-      Array.isArray(geometry.userData[topologyKey]));
+export function vertexEditingUnavailableReason(mesh) {
+  const { geometry } = mesh;
+  if (mesh.isSkinnedMesh) return 'Edit Mode is unavailable for meshes with a skeleton.';
+  if (Object.values(geometry.morphAttributes).some((targets) => targets.length)) {
+    return 'Edit Mode is unavailable for meshes with morph targets.';
+  }
+  const position = geometry.getAttribute('position');
+  const corners = geometry.index?.count ?? position?.count;
+  if (!mesh.isInstancedMesh && position?.itemSize === 3 && corners >= 3 && corners % 3 === 0 &&
+      (geometry.type === 'BoxGeometry' || geometry.type === 'PlaneGeometry' ||
+        geometry.userData[fbxMeshKey] || Array.isArray(geometry.userData[topologyKey]) ||
+        // Older THRL exports contain FBXLoader's unindexed triangles without an import marker.
+        (geometry.type === 'BufferGeometry' && !geometry.index))) return '';
+  return 'Select a cube, plane or static FBX mesh to use Edit Mode.';
 }
 
 // Map logical vertices to all render vertices at the same local position.

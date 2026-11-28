@@ -1,6 +1,6 @@
 import { BufferGeometry, BufferAttribute, Vector3 } from 'three';
 
-import { topologyKey } from './VertexTopology.mjs';
+import { fbxMeshKey, topologyKey } from './VertexTopology.mjs';
 
 const faceKey = 'thrlenderFaces';
 
@@ -14,6 +14,9 @@ export function logicalFaces(geometry) {
   const saved = geometry.userData[faceKey];
   if (Array.isArray(saved) && saved.length === count &&
       saved.every((id) => Number.isInteger(id) && id >= 0)) return saved;
+  if (geometry.userData[fbxMeshKey] || !geometry.index) {
+    return Array.from({ length: count }, (_, triangle) => triangle);
+  }
 
   // The primitive buffers (including older vertex edits) share render vertices
   // within each side of a cube or across the entire plane.
@@ -67,6 +70,7 @@ export function extrudeFace(geometry, faces, face, description, distance) {
   const { logical, normal, boundary } = description;
   let valid = true;
   const result = new BufferGeometry();
+  result.name = geometry.name;
   const attributes = Object.entries(geometry.attributes).filter(([name]) => name !== 'normal');
   const values = attributes.map(() => []);
   const groups = new Map();
@@ -170,6 +174,17 @@ export function extrudeFace(geometry, faces, face, description, distance) {
   result.setIndex(indices);
   result.userData = { ...geometry.userData, [faceKey]: nextFaces, [topologyKey]: [...groups.values()] };
   result.computeVertexNormals();
+  // The cap is translated rigidly. Its normals and those of the untouched triangles still apply.
+  const originalNormal = geometry.getAttribute('normal');
+  if (originalNormal) {
+    const resultNormal = result.getAttribute('normal');
+    for (const vertices of [base, cap]) {
+      for (const [source, target] of vertices) {
+        point.fromBufferAttribute(originalNormal, source);
+        resultNormal.setXYZ(target, point.x, point.y, point.z);
+      }
+    }
+  }
   result.computeBoundingBox();
   result.computeBoundingSphere();
   return result;
