@@ -32,10 +32,10 @@ before(async () => {
 
 after(async () => browser?.close());
 
-async function openEditor(t) {
+async function openEditor(t, handleDialog = (dialog) => dialog.accept()) {
   const page = await browser.newPage({ viewport: { width: 1000, height: 800 } });
   page.setDefaultTimeout(10000);
-  page.on('dialog', (dialog) => dialog.accept());
+  page.on('dialog', handleDialog);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   t.after(async () => {
@@ -96,6 +96,7 @@ test('App cleans up on StrictMode and remount, and follows the editor container'
   await page.mouse.up();
   await page.waitForFunction(() => window.current().selectedObject.position.x > 0 && window.current().controls.enabled);
   await page.waitForFunction(() => Number(document.querySelector('[aria-label="Position X"]').value) > 0);
+  await page.getByRole('status').getByText('Unsaved changes').waitFor();
   await page.keyboard.press('f');
   assert.equal(await page.evaluate(() => window.current().controls.target.x === window.current().selectedObject.position.x), true);
 
@@ -209,7 +210,7 @@ test('editor commands preserve camera, selection, shapes, lights and local files
       editor.transformControls.mode, editor.controls.object === editor.camera, editor.selectedObject,
       editor.scene.getObjectByName('ThrlenderGridHelper') === editor.gridHelper,
     ];
-  }), [true, false, 'rotate', true, null, true]);
+  }), [true, false, 'translate', true, null, true]);
   assert.equal(await page.locator('.selection-name').count(), 0);
   assert.equal(await page.evaluate(() => window.current().transformControls.object === undefined), true);
   await page.mouse.click(210, 720);
@@ -218,6 +219,7 @@ test('editor commands preserve camera, selection, shapes, lights and local files
   await deleteSelection(page);
   await upload('Import FBX', resolve('tests/fixtures/triangle.fbx'));
   await page.waitForFunction(() => window.current().scene.getObjectByName('FBX_Object'));
+  await page.getByRole('status').getByText('Unsaved changes').waitFor();
   await page.locator('canvas').press('Tab');
   assert.equal(await page.locator('.selection-name').innerText(), 'FBX_Object');
   assert.equal(await page.getByLabel('Position X').inputValue(), '0');
@@ -333,4 +335,83 @@ test('menus and transform tools stay accessible at desktop and mobile widths', a
     await viewport.press('t');
     await page.getByRole('button', { name: 'Move', pressed: true }).waitFor();
   }
+});
+
+test('scene commands protect changes and reset scene controls while preserving view preferences', async (t) => {
+  const dialogs = [];
+  let discard = false;
+  const page = await openEditor(t, (dialog) => {
+    dialogs.push(dialog.type());
+    return dialog.type() === 'confirm' && !discard ? dialog.dismiss() : dialog.accept();
+  });
+  const status = page.getByRole('status');
+  async function fileCommand(name) {
+    await menu(page, 'File').click();
+    await page.getByRole('button', { name, exact: true }).click();
+  }
+
+  await page.locator('canvas').press('g');
+  await menu(page, 'View').click();
+  await page.getByLabel('Show inspector').uncheck();
+  await page.getByLabel('Wireframe').check();
+  assert.equal(await status.textContent(), '');
+  await fileCommand('New Scene');
+  assert.deepEqual(dialogs, []);
+  await addItem(page, 'sphere', '#123456');
+  assert.equal(await status.textContent(), 'Unsaved changes');
+  await page.getByRole('button', { name: 'Rotate' }).click();
+  await page.getByRole('button', { name: 'Snap' }).click();
+  await page.getByRole('button', { name: 'Gizmo' }).click();
+  await page.locator('canvas').press('f');
+
+  await fileCommand('New Scene');
+  await fileCommand('Open THRL');
+  assert.deepEqual(dialogs, ['confirm', 'confirm']);
+  assert.equal(await page.evaluate(() => window.current().selectedObject.name), 'sphere');
+  assert.equal(await status.textContent(), 'Unsaved changes');
+
+  discard = true;
+  let chooser = page.waitForEvent('filechooser');
+  await fileCommand('Open THRL');
+  await (await chooser).setFiles([]);
+  assert.equal(await status.textContent(), 'Unsaved changes');
+  chooser = page.waitForEvent('filechooser');
+  await fileCommand('Open THRL');
+  const alert = page.waitForEvent('dialog', (dialog) => dialog.type() === 'alert');
+  await (await chooser).setFiles({ name: 'invalid.thrl', mimeType: 'application/json', buffer: Buffer.from('{}') });
+  await alert;
+  assert.deepEqual(dialogs, ['confirm', 'confirm', 'confirm', 'confirm', 'alert']);
+  assert.equal(await page.evaluate(() => window.current().selectedObject.name), 'sphere');
+  assert.equal(await status.textContent(), 'Unsaved changes');
+
+  await fileCommand('New Scene');
+  assert.equal(await status.textContent(), '');
+  assert.deepEqual(await page.evaluate(() => {
+    const engine = window.current();
+    return [engine.selectedObject, !!engine.scene.getObjectByName('sphere'), engine.transformControls.mode,
+      engine.transformControls.enabled, engine.transformControls.translationSnap, engine.gridHelper.visible,
+      engine.config.WIREFRAME_MODE, engine.controls.target.toArray()];
+  }), [null, false, 'translate', true, 1, false, true, [0, 0, 0]]);
+  assert.equal(await page.getByRole('complementary', { name: 'Inspector' }).isVisible(), false);
+  await menu(page, 'Add').click();
+  assert.equal(await page.getByLabel('Item type').inputValue(), 'cube');
+  assert.equal(await page.getByLabel('Add color').inputValue(), '#ffffff');
+
+  await menu(page, 'View').click();
+  await page.getByLabel('Sky intensity').press('End');
+  assert.equal(await status.textContent(), 'Unsaved changes');
+  const downloading = page.waitForEvent('download');
+  await fileCommand('Save THRL');
+  const saved = await downloading;
+  assert.equal(await saved.failure(), null);
+  assert.equal(await status.textContent(), '');
+  const savedPath = await saved.path();
+
+  await menu(page, 'View').click();
+  await page.getByLabel('Sky intensity').press('Home');
+  chooser = page.waitForEvent('filechooser');
+  await fileCommand('Open THRL');
+  await (await chooser).setFiles(savedPath);
+  await page.waitForFunction(() => window.current().skyLight.intensity === 2);
+  assert.equal(await status.textContent(), '');
 });

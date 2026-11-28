@@ -81,6 +81,12 @@ h2 { font-size: 13px; font-weight: 650; }
   gap: 4px;
 }
 
+.scene-status {
+  margin-inline-start: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .command-menu summary {
   box-sizing: border-box;
   list-style: none;
@@ -229,6 +235,23 @@ legend { padding: 0; margin-bottom: 5px; }
   .menu-panel {
     left: auto;
     right: var(--space);
+  }
+}
+
+@media (max-width: 440px) {
+  .editor {
+    grid-template-rows: 68px minmax(0, 1fr) auto;
+  }
+  .editor-bar {
+    align-items: flex-start;
+  }
+  .editor-bar h1 {
+    line-height: 40px;
+  }
+  .scene-status {
+    position: absolute;
+    bottom: 6px;
+    inset-inline-start: var(--space);
   }
 }
 
