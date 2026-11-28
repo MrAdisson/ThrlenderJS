@@ -1,8 +1,8 @@
 ---
 id: CAP-ECLAIRAGE
-title: "Éclairer la scène"
-parent: ""
-deprecated: false
+title: Éclairer la scène
+parent: 
+order: 1
 ---
 
 La scène possède une lumière hémisphérique par défaut et accepte des sources supplémentaires.

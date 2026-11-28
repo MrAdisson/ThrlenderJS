@@ -1,8 +1,8 @@
 ---
 id: CAP-OBJETS
-title: "Composer la scène"
-parent: ""
-deprecated: false
+title: Composer la scène
+parent: 
+order: 4
 ---
 
 L’éditeur permet de placer des formes et de travailler sur la sélection dans la vue 3D.
