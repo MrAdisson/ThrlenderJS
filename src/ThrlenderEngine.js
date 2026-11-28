@@ -82,7 +82,7 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
   }
 
   initRenderer() {
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new THREE.WebGLRenderer({ alpha: true });
     this.renderer.domElement.tabIndex = 0;
     this.renderer.domElement.setAttribute('aria-label', '3D viewport');
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -270,6 +270,10 @@ export class ThrlenderEngine extends THREE.EventDispatcher {
     if (selection) this.transformControls.attach(selection);
     else this.transformControls.detach();
     this.dispatchEvent({ type: 'selection-changed' });
+  }
+
+  focusSelection() {
+    if (this.selectedObject) this.controls.target.copy(this.selectedObject.position);
   }
 
   removeSelectedObject() {

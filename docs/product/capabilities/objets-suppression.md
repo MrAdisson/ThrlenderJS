@@ -5,4 +5,4 @@ parent: CAP-OBJETS
 order: 5
 ---
 
-**Delete selection** retire l’élément sélectionné de la scène, supprime son éventuelle aide lumineuse, vide le panneau **Properties** et détache le manipulateur.
+Dans **Edit**, **Delete selection** est disponible lorsqu’un élément est sélectionné. Après confirmation, la commande retire l’élément sélectionné de la scène, supprime son éventuelle aide lumineuse, vide le panneau **Inspector** et détache le manipulateur.

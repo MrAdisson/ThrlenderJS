@@ -58,10 +58,9 @@ function VectorFields({ label, vector, refresh }: { label: string; vector: Vecto
   );
 }
 
-export function Properties({ object, refresh, remove }: {
+export function Properties({ object, refresh }: {
   object: Object3D;
   refresh: () => void;
-  remove: () => void;
 }) {
   const light = object instanceof Light ? object : undefined;
   const material = object instanceof Mesh && !Array.isArray(object.material) ? object.material : undefined;
@@ -81,7 +80,6 @@ export function Properties({ object, refresh, remove }: {
         <NumberField label="Distance" value={light.distance} change={(value) => { light.distance = value; refresh(); }} />}
       {light && 'decay' in light && typeof light.decay === 'number' &&
         <NumberField label="Decay" value={light.decay} change={(value) => { light.decay = value; refresh(); }} />}
-      <button className="danger" onClick={remove}>Delete selection</button>
     </>
   );
 }

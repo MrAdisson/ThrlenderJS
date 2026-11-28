@@ -8,7 +8,7 @@ L’interface utilise des libellés courts en anglais, comme **Add**, **Move** e
 <!-- builder:visual-identity -->
 ## Identité visuelle
 
-Le canevas 3D occupe l’espace sous la barre de commandes. Deux panneaux sombres présentent l’ajout et les propriétés. La grille grise et les axes sont visibles au démarrage. [Styles](../src/index.css)
+Le canevas 3D occupe la zone principale sous les menus **File**, **Edit**, **Add** et **View**. La barre d’outils de transformation se trouve dans la vue. L’inspecteur est à droite sur écran large et sous la vue sur écran étroit. Les menus, la barre et l’inspecteur partagent une palette sombre et des états de focus et de sélection cohérents. La grille grise et les axes sont visibles au démarrage. [Styles](../src/index.css)
 
 <!-- builder:accessibility -->
 ## Accessibilité visée
