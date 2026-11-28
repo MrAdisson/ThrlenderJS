@@ -12,4 +12,4 @@ L’éditeur permet d’ajouter des formes, des lumières et des modèles FBX. L
 
 **Edit → Duplicate selection** crée une copie du maillage sélectionné sous le même parent, au même emplacement, puis sélectionne la copie. Les modifications apportées aux propriétés de la copie, notamment sa position et sa couleur, sont indépendantes. La commande s’applique à un maillage à la fois. Les groupes, les lumières et les objets enfants du maillage sont hors du périmètre de la duplication.
 
-**Object Mode** sert à transformer les éléments de la scène. Pour déplacer les sommets d’un cube ou d’un plan, passer en **Edit Mode** dans la vue. [Modélisation 3D](modelisation.md)
+**Object Mode** sert à transformer les éléments de la scène. Passer en **Edit Mode** dans la vue pour déplacer les sommets ou extruder une face d’un cube ou d’un plan. [Modélisation 3D](modelisation.md)

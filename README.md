@@ -8,7 +8,7 @@ Thrlender is a browser based 3D scene editor inspired by Blender. It uses Three.
 - Add point, spot, directional and ambient lights.
 - Select items in the viewport or in the **Scene** hierarchy. Expand imported groups to select their children.
 - Move, rotate or scale the selection with the transform controls. Use **Inspector** to rename items, change visibility and edit their properties. Use **Edit** to duplicate a selected mesh or delete the selection.
-- Switch a cube or plane to **Edit Mode** to move its vertices. The deformation is saved with the THRL scene.
+- Switch a cube or plane to **Edit Mode** to move its vertices or extrude a face. The edited geometry is saved with the THRL scene.
 - Orbit around the scene with the camera controls. Adjust the grid, axes and wireframe display in **View**. Use **Snap** in the transform toolbar to toggle snapping and **Move snap step** in **View** to choose the move increment. Adjust the built-in sky light in **Scene Settings**.
 - Create a new scene, save it by downloading a `.thrl` file, or open a local `.thrl` file. New Scene and Open THRL ask before discarding unsaved changes. Names, visibility and sky lighting are saved with the scene.
 - Import a local `.fbx` model into the current scene.
@@ -44,7 +44,8 @@ With Node.js 20 or newer, run `npm test` to check the bundles and editor behavio
 
 - Drag with the mouse to orbit the camera; use the mouse wheel to zoom.
 - Click a scene item to select it and use the on-screen gizmo to transform it.
-- In **Edit Mode**, click a vertex, Shift-click to add or remove vertices, then drag the **Move** gizmo. Switch back to **Object Mode** to clear the vertex selection.
+- In **Edit Mode**, click a vertex, Shift-click to add or remove vertices, then drag the **Move** gizmo. Switch back to **Object Mode** to clear the edit selection.
+- In **Edit Mode**, choose **Faces**, click a face and choose **Extrude**. Set a positive **Distance** in mesh-local units. Choose **Apply** to keep the result or **Cancel** to restore the original shape.
 - `T`, `R` and `S` switch the gizmo to translate, rotate and scale.
 - `Space` enables or disables the transform gizmo; `G` toggles the grid, `A` toggles the axes and `W` toggles wireframe display.
 - `F` or **View → Focus selection** moves the camera to frame the selected item.
