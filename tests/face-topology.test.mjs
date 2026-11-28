@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BoxGeometry, BufferGeometryLoader, PlaneGeometry, Vector3 } from 'three';
+import { BoxGeometry, BufferGeometry, BufferGeometryLoader, Float32BufferAttribute, PlaneGeometry, Vector3 } from 'three';
 import { describeFace, extrudeFace, logicalFaces, triangleVertices } from '../src/FaceTopology.mjs';
-import { VertexTopology } from '../src/VertexTopology.mjs';
+import { fbxMeshKey, VertexTopology } from '../src/VertexTopology.mjs';
 
 function extrudeFirst(geometry, distance) {
   const topology = new VertexTopology(geometry);
@@ -66,4 +66,24 @@ test('extrudes a subdivided plane as one face with four walls and an open base',
   assert.equal(result.index.count / 3, 64 + 2 * 66);
   assert.equal(result.boundingBox.max.z, 0.75);
   assert.equal(edgeCounts(result).filter((uses) => uses.length === 1).length, 66);
+});
+
+test('keeps adjacent imported triangles separate and copies authored render attributes', () => {
+  const geometry = new BufferGeometry();
+  geometry.userData[fbxMeshKey] = true;
+  geometry.setIndex([0, 1, 2, 0, 2, 3]);
+  geometry.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0], 3));
+  geometry.setAttribute('normal', new Float32BufferAttribute(Array(4).fill([0, 0.6, 0.8]).flat(), 3));
+  geometry.setAttribute('color', new Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1], 3));
+  const copy = new VertexTopology(geometry).editableCopy(geometry);
+  assert.deepEqual(copy.toJSON().data, geometry.toJSON().data);
+  assert.deepEqual(logicalFaces(copy), [0, 1]);
+
+  const result = extrudeFirst(copy, 1);
+  assert.equal(result.index.count / 3, 8);
+  for (const name of ['normal', 'color']) {
+    const original = geometry.getAttribute(name).array;
+    const expected = [0, 1, 2, 0, 2, 3].flatMap((index) => [...original.slice(index * 3, index * 3 + 3)]);
+    assert.deepEqual([...result.getAttribute(name).array.slice(0, 18)], expected);
+  }
 });
