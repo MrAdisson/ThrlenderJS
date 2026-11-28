@@ -13,3 +13,7 @@ La barre d’outils de la vue contient **Move**, **Rotate** et **Scale**. Le mod
 Dans une hiérarchie, la rotation ou l’échelle du parent peut décaler les points d’accrochage par rapport à la grille mondiale.
 
 En **Object Mode**, le manipulateur transforme l’objet sélectionné. En **Edit Mode**, seul **Move** est disponible et le manipulateur déplace les sommets sélectionnés. **Gizmo**, **Snap** et le pas de déplacement s’appliquent aussi aux sommets. Le retour en **Object Mode** rétablit l’outil de transformation d’objet précédemment choisi. [Modélisation 3D](modelisation.md)
+
+Un glisser effectif du manipulateur compte pour une seule opération dans **Edit → Undo** et **Redo**, en mode Objet comme en mode Édition. Les modifications de position et d’échelle dans **Inspector** sont aussi réversibles. En mode Édition, **Apply** enregistre une seule opération d’extrusion. Ajuster **Distance** pendant l’aperçu ou choisir **Cancel** ne crée pas d’entrée. Ces commandes s’appliquent aussi aux maillages FBX statiques éditables.
+
+Quand la vue 3D a le focus, **Ctrl+Z** ou **Cmd+Z** annule. **Ctrl+Maj+Z**, **Cmd+Maj+Z** ou **Ctrl+Y** rétablit.
