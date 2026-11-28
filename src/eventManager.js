@@ -1,5 +1,4 @@
 import { selectionnableObjectsTypes } from './utils/config';
-import * as THREE from 'three';
 
 /** @param {import('./ThrlenderEngine').ThrlenderEngine} thrlender */
 const init = (thrlender) => {
@@ -42,15 +41,7 @@ const init = (thrlender) => {
       event.preventDefault();
       config.WIREFRAME_MODE = !config.WIREFRAME_MODE;
     }
-    if (event.key === 'f') {
-      if (thrlender.selectedObject) {
-        thrlender.controls.target = new THREE.Vector3(
-          thrlender.selectedObject.position.x,
-          thrlender.selectedObject.position.y,
-          thrlender.selectedObject.position.z
-        );
-      }
-    }
+    if (event.key === 'f') thrlender.focusSelection();
     if (event.key === 'Tab') {
       const objects = thrlender.scene.children.filter((obj) => selectionnableObjectsTypes.includes(obj.name));
       const distances = [];
